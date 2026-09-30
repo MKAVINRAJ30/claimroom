@@ -1,0 +1,12 @@
+class: Room
+table: room
+fields:
+  code: String
+  title: String
+  sellerName: String
+  isOpen: bool
+  createdAt: DateTime
+indexes:
+  room_code_idx:
+    fields: code
+    unique: true

@@ -1,0 +1,44 @@
+services:
+  # Development services
+  postgres:
+    image: ghcr.io/serverpod/postgres:16
+    ports:
+      - "8090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: claimroom
+      POSTGRES_PASSWORD: "w_ZcqYPB71bjPO_fNpbkQAC2HRVLdiUG"
+    volumes:
+      - claimroom_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6.2.6
+    ports:
+      - "8091:6379"
+    command: redis-server --requirepass "SW4j0yiDFL1ztN6z7TTO-MgQ5hkjBjU_"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
+  # Test services
+  postgres_test:
+    image: ghcr.io/serverpod/postgres:16
+    ports:
+      - "9090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: claimroom_test
+      POSTGRES_PASSWORD: "1XM8am5X5eJRccnk1lg9aOKZnk3ff4zR"
+    volumes:
+      - claimroom_test_data:/var/lib/postgresql/data
+
+  redis_test:
+    image: redis:6.2.6
+    ports:
+      - "9091:6379"
+    command: redis-server --requirepass "Z1uNQ4lboo5-AfE1zTvVFB4wvLPwUrZg"
+    environment:
+      - REDIS_REPLICATION_MODE=master
+
+volumes:
+  claimroom_data:
+  claimroom_test_data:

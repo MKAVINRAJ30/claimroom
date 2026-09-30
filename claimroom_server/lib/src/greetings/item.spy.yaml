@@ -1,0 +1,13 @@
+class: Item
+table: item
+fields:
+  roomId: int
+  name: String
+  price: double
+  quantity: int
+  status: String
+  heldBy: String?
+  holdExpiresAt: DateTime?
+indexes:
+  item_room_idx:
+    fields: roomId
