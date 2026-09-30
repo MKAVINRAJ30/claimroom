@@ -11,6 +11,7 @@
 // ignore_for_file: dead_code, unnecessary_type_check
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:claimroom_client/src/protocol/greetings/item.dart' as _idtbr1ys;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
@@ -75,6 +76,10 @@ class Protocol extends _isc.SerializationManager {
     }
     if (t == _isc.getType<_ihwvtgor.Room?>()) {
       return (data != null ? _ihwvtgor.Room.fromJson(data) : null) as T;
+    }
+    if (t == List<_idtbr1ys.Item>) {
+      return (data as List).map((e) => deserialize<_idtbr1ys.Item>(e)).toList()
+          as T;
     }
     try {
       return _iaic.Protocol().deserialize<T>(data, t);

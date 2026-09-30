@@ -17,6 +17,7 @@ import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
 import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
+import '../claimroom/room_endpoint.dart' as _iwlj7kd2;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
 
 class Endpoints extends _is.EndpointDispatch {
@@ -33,6 +34,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'jwtRefresh',
+          null,
+        ),
+      'room': _iwlj7kd2.RoomEndpoint()
+        ..initialize(
+          server,
+          'room',
           null,
         ),
       'greeting': _il624ik7.GreetingEndpoint()
@@ -245,6 +252,105 @@ class Endpoints extends _is.EndpointDispatch {
                         session,
                         refreshToken: params['refreshToken'],
                       ),
+        ),
+      },
+    );
+    connectors['room'] = _is.EndpointConnector(
+      name: 'room',
+      endpoint: endpoints['room']!,
+      methodConnectors: {
+        'createRoom': _is.MethodConnector(
+          name: 'createRoom',
+          params: {
+            'title': _is.ParameterDescription(
+              name: 'title',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'sellerName': _is.ParameterDescription(
+              name: 'sellerName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).createRoom(
+                    session,
+                    params['title'],
+                    params['sellerName'],
+                  ),
+        ),
+        'getRoomByCode': _is.MethodConnector(
+          name: 'getRoomByCode',
+          params: {
+            'code': _is.ParameterDescription(
+              name: 'code',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).getRoomByCode(
+                    session,
+                    params['code'],
+                  ),
+        ),
+        'addItem': _is.MethodConnector(
+          name: 'addItem',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'name': _is.ParameterDescription(
+              name: 'name',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'price': _is.ParameterDescription(
+              name: 'price',
+              type: _is.getType<double>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _iwlj7kd2.RoomEndpoint).addItem(
+                session,
+                params['roomId'],
+                params['name'],
+                params['price'],
+              ),
+        ),
+        'listItems': _is.MethodConnector(
+          name: 'listItems',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).listItems(
+                    session,
+                    params['roomId'],
+                  ),
         ),
       },
     );

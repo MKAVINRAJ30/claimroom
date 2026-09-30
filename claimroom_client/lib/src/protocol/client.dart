@@ -13,6 +13,8 @@
 import 'dart:async' as _ida;
 import 'package:claimroom_client/src/protocol/greetings/greeting.dart'
     as _i264i9oz;
+import 'package:claimroom_client/src/protocol/greetings/item.dart' as _idtbr1ys;
+import 'package:claimroom_client/src/protocol/greetings/room.dart' as _ilfa8wl2;
 import 'package:http/http.dart' as _i85jenna;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
@@ -246,6 +248,58 @@ class EndpointJwtRefresh extends _iacc.EndpointRefreshJwtTokens {
       );
 }
 
+/// {@category Endpoint}
+class EndpointRoom extends _isc.EndpointRef {
+  EndpointRoom(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'room';
+
+  /// Seller creates a room and gets back its join code.
+  _ida.Future<_ilfa8wl2.Room> createRoom(
+    String title,
+    String sellerName,
+  ) => caller.callServerEndpoint<_ilfa8wl2.Room>(
+    'room',
+    'createRoom',
+    {
+      'title': title,
+      'sellerName': sellerName,
+    },
+  );
+
+  /// Buyers use this to join with a code.
+  _ida.Future<_ilfa8wl2.Room?> getRoomByCode(String code) =>
+      caller.callServerEndpoint<_ilfa8wl2.Room?>(
+        'room',
+        'getRoomByCode',
+        {'code': code},
+      );
+
+  /// Seller adds one product to a room.
+  _ida.Future<_idtbr1ys.Item> addItem(
+    int roomId,
+    String name,
+    double price,
+  ) => caller.callServerEndpoint<_idtbr1ys.Item>(
+    'room',
+    'addItem',
+    {
+      'roomId': roomId,
+      'name': name,
+      'price': price,
+    },
+  );
+
+  /// Everyone in the room reads the current items.
+  _ida.Future<List<_idtbr1ys.Item>> listItems(int roomId) =>
+      caller.callServerEndpoint<List<_idtbr1ys.Item>>(
+        'room',
+        'listItems',
+        {'roomId': roomId},
+      );
+}
+
 /// This is an example endpoint that returns a greeting message through
 /// its [hello] method.
 /// {@category Endpoint}
@@ -304,6 +358,7 @@ class Client extends _isc.ServerpodClientShared {
        ) {
     emailIdp = EndpointEmailIdp(this);
     jwtRefresh = EndpointJwtRefresh(this);
+    room = EndpointRoom(this);
     greeting = EndpointGreeting(this);
     modules = Modules(this);
   }
@@ -311,6 +366,8 @@ class Client extends _isc.ServerpodClientShared {
   late final EndpointEmailIdp emailIdp;
 
   late final EndpointJwtRefresh jwtRefresh;
+
+  late final EndpointRoom room;
 
   late final EndpointGreeting greeting;
 
@@ -320,6 +377,7 @@ class Client extends _isc.ServerpodClientShared {
   Map<String, _isc.EndpointRef> get endpointRefLookup => {
     'emailIdp': emailIdp,
     'jwtRefresh': jwtRefresh,
+    'room': room,
     'greeting': greeting,
   };
 

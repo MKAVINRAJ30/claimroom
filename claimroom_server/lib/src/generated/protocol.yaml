@@ -9,5 +9,10 @@ emailIdp:
   - hasAccount:
 jwtRefresh:
   - refreshAccessToken:
+room:
+  - createRoom:
+  - getRoomByCode:
+  - addItem:
+  - listItems:
 greeting:
   - hello:
