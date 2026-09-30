@@ -7,7 +7,11 @@ fields:
   quantity: int
   status: String
   heldBy: String?
+  heldByContact: String?
   holdExpiresAt: DateTime?
+  soldTo: String?
+  soldToContact: String?
+  soldAt: DateTime?
 indexes:
   item_room_idx:
     fields: roomId

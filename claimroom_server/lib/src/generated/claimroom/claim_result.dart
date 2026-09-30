@@ -1,0 +1,111 @@
+/* AUTOMATICALLY GENERATED CODE DO NOT MODIFY */
+/*   To generate run: "serverpod generate"    */
+
+// ignore_for_file: implementation_imports
+// ignore_for_file: library_private_types_in_public_api
+// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: public_member_api_docs
+// ignore_for_file: type_literal_in_constant_pattern
+// ignore_for_file: use_super_parameters
+// ignore_for_file: invalid_use_of_internal_member
+
+// ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:claimroom_server/src/generated/protocol.dart' as _ix13sr6n;
+import 'package:serverpod/serverpod.dart' as _is;
+import '../greetings/item.dart' as _iz9csdid;
+
+abstract class ClaimResult
+    implements _is.SerializableModel, _is.ProtocolSerialization {
+  ClaimResult._({
+    required this.success,
+    required this.message,
+    this.item,
+  });
+
+  factory ClaimResult({
+    required bool success,
+    required String message,
+    _iz9csdid.Item? item,
+  }) = _ClaimResultImpl;
+
+  factory ClaimResult.fromJson(Map<String, dynamic> jsonSerialization) {
+    return ClaimResult(
+      success: _is.BoolJsonExtension.fromJson(jsonSerialization['success']),
+      message: jsonSerialization['message'] as String,
+      item: jsonSerialization['item'] == null
+          ? null
+          : _ix13sr6n.Protocol().deserialize<_iz9csdid.Item>(
+              jsonSerialization['item'],
+            ),
+    );
+  }
+
+  bool success;
+
+  String message;
+
+  _iz9csdid.Item? item;
+
+  /// Returns a shallow copy of this [ClaimResult]
+  /// with some or all fields replaced by the given arguments.
+  @_is.useResult
+  ClaimResult copyWith({
+    bool? success,
+    String? message,
+    _iz9csdid.Item? item,
+  });
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      '__className__': 'ClaimResult',
+      'success': success,
+      'message': message,
+      if (item != null) 'item': item?.toJson(),
+    };
+  }
+
+  @override
+  Map<String, dynamic> toJsonForProtocol() {
+    return {
+      '__className__': 'ClaimResult',
+      'success': success,
+      'message': message,
+      if (item != null) 'item': item?.toJsonForProtocol(),
+    };
+  }
+
+  @override
+  String toString() {
+    return _is.SerializationManager.encode(this);
+  }
+}
+
+class _Undefined {}
+
+class _ClaimResultImpl extends ClaimResult {
+  _ClaimResultImpl({
+    required bool success,
+    required String message,
+    _iz9csdid.Item? item,
+  }) : super._(
+         success: success,
+         message: message,
+         item: item,
+       );
+
+  /// Returns a shallow copy of this [ClaimResult]
+  /// with some or all fields replaced by the given arguments.
+  @_is.useResult
+  @override
+  ClaimResult copyWith({
+    bool? success,
+    String? message,
+    Object? item = _Undefined,
+  }) {
+    return ClaimResult(
+      success: success ?? this.success,
+      message: message ?? this.message,
+      item: item is _iz9csdid.Item? ? item : this.item?.copyWith(),
+    );
+  }
+}

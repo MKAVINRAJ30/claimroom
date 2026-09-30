@@ -10,6 +10,7 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:claimroom_server/src/generated/future_calls.dart' as _ibfxidep;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
@@ -19,6 +20,7 @@ import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
 import '../claimroom/room_endpoint.dart' as _iwlj7kd2;
 import '../greetings/greeting_endpoint.dart' as _il624ik7;
+export 'future_calls.dart' show ServerpodFutureCallsGetter;
 
 class Endpoints extends _is.EndpointDispatch {
   @override
@@ -303,6 +305,49 @@ class Endpoints extends _is.EndpointDispatch {
                     params['code'],
                   ),
         ),
+        'getRoom': _is.MethodConnector(
+          name: 'getRoom',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _iwlj7kd2.RoomEndpoint).getRoom(
+                session,
+                params['roomId'],
+              ),
+        ),
+        'toggleRoomStatus': _is.MethodConnector(
+          name: 'toggleRoomStatus',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'isOpen': _is.ParameterDescription(
+              name: 'isOpen',
+              type: _is.getType<bool>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _iwlj7kd2.RoomEndpoint)
+                  .toggleRoomStatus(
+                    session,
+                    params['roomId'],
+                    params['isOpen'],
+                  ),
+        ),
         'addItem': _is.MethodConnector(
           name: 'addItem',
           params: {
@@ -321,6 +366,11 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<double>(),
               nullable: false,
             ),
+            'quantity': _is.ParameterDescription(
+              name: 'quantity',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
           },
           call:
               (
@@ -331,7 +381,27 @@ class Endpoints extends _is.EndpointDispatch {
                 params['roomId'],
                 params['name'],
                 params['price'],
+                params['quantity'],
               ),
+        ),
+        'deleteItem': _is.MethodConnector(
+          name: 'deleteItem',
+          params: {
+            'itemId': _is.ParameterDescription(
+              name: 'itemId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).deleteItem(
+                    session,
+                    params['itemId'],
+                  ),
         ),
         'listItems': _is.MethodConnector(
           name: 'listItems',
@@ -351,6 +421,127 @@ class Endpoints extends _is.EndpointDispatch {
                     session,
                     params['roomId'],
                   ),
+        ),
+        'claimItem': _is.MethodConnector(
+          name: 'claimItem',
+          params: {
+            'itemId': _is.ParameterDescription(
+              name: 'itemId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'buyerName': _is.ParameterDescription(
+              name: 'buyerName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'buyerContact': _is.ParameterDescription(
+              name: 'buyerContact',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).claimItem(
+                    session,
+                    params['itemId'],
+                    params['buyerName'],
+                    params['buyerContact'],
+                  ),
+        ),
+        'confirmClaim': _is.MethodConnector(
+          name: 'confirmClaim',
+          params: {
+            'itemId': _is.ParameterDescription(
+              name: 'itemId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'buyerName': _is.ParameterDescription(
+              name: 'buyerName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).confirmClaim(
+                    session,
+                    params['itemId'],
+                    params['buyerName'],
+                  ),
+        ),
+        'releaseClaim': _is.MethodConnector(
+          name: 'releaseClaim',
+          params: {
+            'itemId': _is.ParameterDescription(
+              name: 'itemId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'buyerName': _is.ParameterDescription(
+              name: 'buyerName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).releaseClaim(
+                    session,
+                    params['itemId'],
+                    params['buyerName'],
+                  ),
+        ),
+        'getOrderSheet': _is.MethodConnector(
+          name: 'getOrderSheet',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).getOrderSheet(
+                    session,
+                    params['roomId'],
+                  ),
+        ),
+        'streamRoom': _is.MethodStreamConnector(
+          name: 'streamRoom',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          streamParams: {},
+          returnType: _is.MethodStreamReturnType.streamType,
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+                Map<String, Stream> streamParams,
+              ) => (endpoints['room'] as _iwlj7kd2.RoomEndpoint).streamRoom(
+                session,
+                params['roomId'],
+              ),
         ),
       },
     );
@@ -383,5 +574,10 @@ class Endpoints extends _is.EndpointDispatch {
       ..initializeEndpoints(server);
     modules['serverpod_auth_core'] = _iacs.Endpoints()
       ..initializeEndpoints(server);
+  }
+
+  @override
+  _is.FutureCallDispatch? get futureCalls {
+    return _ibfxidep.FutureCalls();
   }
 }

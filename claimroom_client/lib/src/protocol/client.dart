@@ -11,6 +11,12 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
+import 'package:claimroom_client/src/protocol/claimroom/claim_result.dart'
+    as _i64ozq20;
+import 'package:claimroom_client/src/protocol/claimroom/order_sheet.dart'
+    as _i9f5dsxj;
+import 'package:claimroom_client/src/protocol/claimroom/room_event.dart'
+    as _i0ir7zxv;
 import 'package:claimroom_client/src/protocol/greetings/greeting.dart'
     as _i264i9oz;
 import 'package:claimroom_client/src/protocol/greetings/item.dart' as _idtbr1ys;
@@ -276,11 +282,33 @@ class EndpointRoom extends _isc.EndpointRef {
         {'code': code},
       );
 
+  /// Get room by its ID.
+  _ida.Future<_ilfa8wl2.Room?> getRoom(int roomId) =>
+      caller.callServerEndpoint<_ilfa8wl2.Room?>(
+        'room',
+        'getRoom',
+        {'roomId': roomId},
+      );
+
+  /// Seller can open or close claiming in the room.
+  _ida.Future<_ilfa8wl2.Room> toggleRoomStatus(
+    int roomId,
+    bool isOpen,
+  ) => caller.callServerEndpoint<_ilfa8wl2.Room>(
+    'room',
+    'toggleRoomStatus',
+    {
+      'roomId': roomId,
+      'isOpen': isOpen,
+    },
+  );
+
   /// Seller adds one product to a room.
   _ida.Future<_idtbr1ys.Item> addItem(
     int roomId,
     String name,
     double price,
+    int quantity,
   ) => caller.callServerEndpoint<_idtbr1ys.Item>(
     'room',
     'addItem',
@@ -288,7 +316,15 @@ class EndpointRoom extends _isc.EndpointRef {
       'roomId': roomId,
       'name': name,
       'price': price,
+      'quantity': quantity,
     },
+  );
+
+  /// Seller removes an available item.
+  _ida.Future<bool> deleteItem(int itemId) => caller.callServerEndpoint<bool>(
+    'room',
+    'deleteItem',
+    {'itemId': itemId},
   );
 
   /// Everyone in the room reads the current items.
@@ -296,6 +332,74 @@ class EndpointRoom extends _isc.EndpointRef {
       caller.callServerEndpoint<List<_idtbr1ys.Item>>(
         'room',
         'listItems',
+        {'roomId': roomId},
+      );
+
+  /// Real-time event stream for the room.
+  /// Clients subscribe to this stream to receive instant updates when
+  /// items are added, claimed, held, confirmed, or released.
+  _ida.Stream<_i0ir7zxv.RoomEvent> streamRoom(int roomId) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_i0ir7zxv.RoomEvent>,
+        _i0ir7zxv.RoomEvent
+      >(
+        'room',
+        'streamRoom',
+        {'roomId': roomId},
+        {},
+      );
+
+  /// Atomic claim: Buyer taps "Claim".
+  /// Uses a database transaction with LockMode.forUpdate to eliminate race conditions.
+  /// If two buyers claim simultaneously, PostgreSQL row-level locks ensure only
+  /// one succeeds.
+  _ida.Future<_i64ozq20.ClaimResult> claimItem(
+    int itemId,
+    String buyerName,
+    String? buyerContact,
+  ) => caller.callServerEndpoint<_i64ozq20.ClaimResult>(
+    'room',
+    'claimItem',
+    {
+      'itemId': itemId,
+      'buyerName': buyerName,
+      'buyerContact': buyerContact,
+    },
+  );
+
+  /// Buyer confirms their claim within the 60-second hold period.
+  /// Converts hold state to permanent sold state.
+  _ida.Future<_i64ozq20.ClaimResult> confirmClaim(
+    int itemId,
+    String buyerName,
+  ) => caller.callServerEndpoint<_i64ozq20.ClaimResult>(
+    'room',
+    'confirmClaim',
+    {
+      'itemId': itemId,
+      'buyerName': buyerName,
+    },
+  );
+
+  /// Buyer cancels or releases a held item back to the room before expiry.
+  _ida.Future<_i64ozq20.ClaimResult> releaseClaim(
+    int itemId,
+    String buyerName,
+  ) => caller.callServerEndpoint<_i64ozq20.ClaimResult>(
+    'room',
+    'releaseClaim',
+    {
+      'itemId': itemId,
+      'buyerName': buyerName,
+    },
+  );
+
+  /// Generates the complete order sheet for the seller.
+  /// Aggregates all confirmed (sold) items grouped by buyer name.
+  _ida.Future<_i9f5dsxj.OrderSheet> getOrderSheet(int roomId) =>
+      caller.callServerEndpoint<_i9f5dsxj.OrderSheet>(
+        'room',
+        'getOrderSheet',
         {'roomId': roomId},
       );
 }

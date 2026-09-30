@@ -19,9 +19,19 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
+import 'claimroom/buyer_order_summary.dart' as _it96tugq;
+import 'claimroom/claim_result.dart' as _in969j7u;
+import 'claimroom/order_sheet.dart' as _ihpac1yz;
+import 'claimroom/room_event.dart' as _ii05qs2r;
+import 'future_calls_generated_models/hold_expiry_future_call_expire_hold_model.dart'
+    as _inu78a98;
 import 'greetings/greeting.dart' as _izw8z7ou;
 import 'greetings/item.dart' as _i1g1fq7w;
 import 'greetings/room.dart' as _ihwvtgor;
+export 'claimroom/buyer_order_summary.dart';
+export 'claimroom/claim_result.dart';
+export 'claimroom/order_sheet.dart';
+export 'claimroom/room_event.dart';
 export 'greetings/greeting.dart';
 export 'greetings/item.dart';
 export 'greetings/room.dart';
@@ -84,7 +94,31 @@ class Protocol extends _is.DatabaseSerializationManager {
           dartType: 'String?',
         ),
         _isp.ColumnDefinition(
+          name: 'heldByContact',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
           name: 'holdExpiresAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: true,
+          dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'soldTo',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'soldToContact',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'soldAt',
           columnType: _isp.ColumnType.timestampWithoutTimeZone,
           isNullable: true,
           dartType: 'DateTime?',
@@ -202,6 +236,21 @@ class Protocol extends _is.DatabaseSerializationManager {
       }
     }
 
+    if (t == _it96tugq.BuyerOrderSummary) {
+      return _it96tugq.BuyerOrderSummary.fromJson(data) as T;
+    }
+    if (t == _in969j7u.ClaimResult) {
+      return _in969j7u.ClaimResult.fromJson(data) as T;
+    }
+    if (t == _ihpac1yz.OrderSheet) {
+      return _ihpac1yz.OrderSheet.fromJson(data) as T;
+    }
+    if (t == _ii05qs2r.RoomEvent) {
+      return _ii05qs2r.RoomEvent.fromJson(data) as T;
+    }
+    if (t == _inu78a98.HoldExpiryFutureCallExpireHoldModel) {
+      return _inu78a98.HoldExpiryFutureCallExpireHoldModel.fromJson(data) as T;
+    }
     if (t == _izw8z7ou.Greeting) {
       return _izw8z7ou.Greeting.fromJson(data) as T;
     }
@@ -211,6 +260,25 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _ihwvtgor.Room) {
       return _ihwvtgor.Room.fromJson(data) as T;
     }
+    if (t == _is.getType<_it96tugq.BuyerOrderSummary?>()) {
+      return (data != null ? _it96tugq.BuyerOrderSummary.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_in969j7u.ClaimResult?>()) {
+      return (data != null ? _in969j7u.ClaimResult.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ihpac1yz.OrderSheet?>()) {
+      return (data != null ? _ihpac1yz.OrderSheet.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ii05qs2r.RoomEvent?>()) {
+      return (data != null ? _ii05qs2r.RoomEvent.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_inu78a98.HoldExpiryFutureCallExpireHoldModel?>()) {
+      return (data != null
+              ? _inu78a98.HoldExpiryFutureCallExpireHoldModel.fromJson(data)
+              : null)
+          as T;
+    }
     if (t == _is.getType<_izw8z7ou.Greeting?>()) {
       return (data != null ? _izw8z7ou.Greeting.fromJson(data) : null) as T;
     }
@@ -219,6 +287,16 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _is.getType<_ihwvtgor.Room?>()) {
       return (data != null ? _ihwvtgor.Room.fromJson(data) : null) as T;
+    }
+    if (t == List<_i1g1fq7w.Item>) {
+      return (data as List).map((e) => deserialize<_i1g1fq7w.Item>(e)).toList()
+          as T;
+    }
+    if (t == List<_it96tugq.BuyerOrderSummary>) {
+      return (data as List)
+              .map((e) => deserialize<_it96tugq.BuyerOrderSummary>(e))
+              .toList()
+          as T;
     }
     if (t == List<_if796r8c.Item>) {
       return (data as List).map((e) => deserialize<_if796r8c.Item>(e)).toList()
@@ -238,6 +316,12 @@ class Protocol extends _is.DatabaseSerializationManager {
 
   static String? getClassNameForType(Type type) {
     return switch (type) {
+      _it96tugq.BuyerOrderSummary => 'BuyerOrderSummary',
+      _in969j7u.ClaimResult => 'ClaimResult',
+      _ihpac1yz.OrderSheet => 'OrderSheet',
+      _ii05qs2r.RoomEvent => 'RoomEvent',
+      _inu78a98.HoldExpiryFutureCallExpireHoldModel =>
+        'HoldExpiryFutureCallExpireHoldModel',
       _izw8z7ou.Greeting => 'Greeting',
       _i1g1fq7w.Item => 'Item',
       _ihwvtgor.Room => 'Room',
@@ -255,6 +339,16 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
 
     switch (data) {
+      case _it96tugq.BuyerOrderSummary():
+        return 'BuyerOrderSummary';
+      case _in969j7u.ClaimResult():
+        return 'ClaimResult';
+      case _ihpac1yz.OrderSheet():
+        return 'OrderSheet';
+      case _ii05qs2r.RoomEvent():
+        return 'RoomEvent';
+      case _inu78a98.HoldExpiryFutureCallExpireHoldModel():
+        return 'HoldExpiryFutureCallExpireHoldModel';
       case _izw8z7ou.Greeting():
         return 'Greeting';
       case _i1g1fq7w.Item():
@@ -286,6 +380,23 @@ class Protocol extends _is.DatabaseSerializationManager {
     var dataClassName = data['className'];
     if (dataClassName is! String) {
       return super.deserializeByClassName(data);
+    }
+    if (dataClassName == 'BuyerOrderSummary') {
+      return deserialize<_it96tugq.BuyerOrderSummary>(data['data']);
+    }
+    if (dataClassName == 'ClaimResult') {
+      return deserialize<_in969j7u.ClaimResult>(data['data']);
+    }
+    if (dataClassName == 'OrderSheet') {
+      return deserialize<_ihpac1yz.OrderSheet>(data['data']);
+    }
+    if (dataClassName == 'RoomEvent') {
+      return deserialize<_ii05qs2r.RoomEvent>(data['data']);
+    }
+    if (dataClassName == 'HoldExpiryFutureCallExpireHoldModel') {
+      return deserialize<_inu78a98.HoldExpiryFutureCallExpireHoldModel>(
+        data['data'],
+      );
     }
     if (dataClassName == 'Greeting') {
       return deserialize<_izw8z7ou.Greeting>(data['data']);

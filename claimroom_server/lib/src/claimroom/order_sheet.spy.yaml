@@ -1,0 +1,10 @@
+class: OrderSheet
+fields:
+  roomId: int
+  roomTitle: String
+  sellerName: String
+  buyers: List<BuyerOrderSummary>
+  grandTotal: double
+  totalItemsSold: int
+  totalItems: int
+  generatedAt: DateTime

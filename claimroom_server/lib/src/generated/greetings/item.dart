@@ -21,7 +21,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     required this.quantity,
     required this.status,
     this.heldBy,
+    this.heldByContact,
     this.holdExpiresAt,
+    this.soldTo,
+    this.soldToContact,
+    this.soldAt,
   });
 
   factory Item({
@@ -32,7 +36,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     required int quantity,
     required String status,
     String? heldBy,
+    String? heldByContact,
     DateTime? holdExpiresAt,
+    String? soldTo,
+    String? soldToContact,
+    DateTime? soldAt,
   }) = _ItemImpl;
 
   factory Item.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -44,11 +52,17 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       quantity: jsonSerialization['quantity'] as int,
       status: jsonSerialization['status'] as String,
       heldBy: jsonSerialization['heldBy'] as String?,
+      heldByContact: jsonSerialization['heldByContact'] as String?,
       holdExpiresAt: jsonSerialization['holdExpiresAt'] == null
           ? null
           : _is.DateTimeJsonExtension.fromJson(
               jsonSerialization['holdExpiresAt'],
             ),
+      soldTo: jsonSerialization['soldTo'] as String?,
+      soldToContact: jsonSerialization['soldToContact'] as String?,
+      soldAt: jsonSerialization['soldAt'] == null
+          ? null
+          : _is.DateTimeJsonExtension.fromJson(jsonSerialization['soldAt']),
     );
   }
 
@@ -71,7 +85,15 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
 
   String? heldBy;
 
+  String? heldByContact;
+
   DateTime? holdExpiresAt;
+
+  String? soldTo;
+
+  String? soldToContact;
+
+  DateTime? soldAt;
 
   @override
   _is.Table<int?> get table => t;
@@ -87,7 +109,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     int? quantity,
     String? status,
     String? heldBy,
+    String? heldByContact,
     DateTime? holdExpiresAt,
+    String? soldTo,
+    String? soldToContact,
+    DateTime? soldAt,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -100,7 +126,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       'quantity': quantity,
       'status': status,
       if (heldBy != null) 'heldBy': heldBy,
+      if (heldByContact != null) 'heldByContact': heldByContact,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
+      if (soldTo != null) 'soldTo': soldTo,
+      if (soldToContact != null) 'soldToContact': soldToContact,
+      if (soldAt != null) 'soldAt': soldAt?.toJson(),
     };
   }
 
@@ -115,7 +145,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       'quantity': quantity,
       'status': status,
       if (heldBy != null) 'heldBy': heldBy,
+      if (heldByContact != null) 'heldByContact': heldByContact,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
+      if (soldTo != null) 'soldTo': soldTo,
+      if (soldToContact != null) 'soldToContact': soldToContact,
+      if (soldAt != null) 'soldAt': soldAt?.toJson(),
     };
   }
 
@@ -158,7 +192,11 @@ class _ItemImpl extends Item {
     required int quantity,
     required String status,
     String? heldBy,
+    String? heldByContact,
     DateTime? holdExpiresAt,
+    String? soldTo,
+    String? soldToContact,
+    DateTime? soldAt,
   }) : super._(
          id: id,
          roomId: roomId,
@@ -167,7 +205,11 @@ class _ItemImpl extends Item {
          quantity: quantity,
          status: status,
          heldBy: heldBy,
+         heldByContact: heldByContact,
          holdExpiresAt: holdExpiresAt,
+         soldTo: soldTo,
+         soldToContact: soldToContact,
+         soldAt: soldAt,
        );
 
   /// Returns a shallow copy of this [Item]
@@ -182,7 +224,11 @@ class _ItemImpl extends Item {
     int? quantity,
     String? status,
     Object? heldBy = _Undefined,
+    Object? heldByContact = _Undefined,
     Object? holdExpiresAt = _Undefined,
+    Object? soldTo = _Undefined,
+    Object? soldToContact = _Undefined,
+    Object? soldAt = _Undefined,
   }) {
     return Item(
       id: id is int? ? id : this.id,
@@ -192,9 +238,17 @@ class _ItemImpl extends Item {
       quantity: quantity ?? this.quantity,
       status: status ?? this.status,
       heldBy: heldBy is String? ? heldBy : this.heldBy,
+      heldByContact: heldByContact is String?
+          ? heldByContact
+          : this.heldByContact,
       holdExpiresAt: holdExpiresAt is DateTime?
           ? holdExpiresAt
           : this.holdExpiresAt,
+      soldTo: soldTo is String? ? soldTo : this.soldTo,
+      soldToContact: soldToContact is String?
+          ? soldToContact
+          : this.soldToContact,
+      soldAt: soldAt is DateTime? ? soldAt : this.soldAt,
     );
   }
 }
@@ -232,9 +286,32 @@ class ItemUpdateTable extends _is.UpdateTable<ItemTable> {
     value,
   );
 
+  _is.ColumnValue<String, String> heldByContact(String? value) =>
+      _is.ColumnValue(
+        table.heldByContact,
+        value,
+      );
+
   _is.ColumnValue<DateTime, DateTime> holdExpiresAt(DateTime? value) =>
       _is.ColumnValue(
         table.holdExpiresAt,
+        value,
+      );
+
+  _is.ColumnValue<String, String> soldTo(String? value) => _is.ColumnValue(
+    table.soldTo,
+    value,
+  );
+
+  _is.ColumnValue<String, String> soldToContact(String? value) =>
+      _is.ColumnValue(
+        table.soldToContact,
+        value,
+      );
+
+  _is.ColumnValue<DateTime, DateTime> soldAt(DateTime? value) =>
+      _is.ColumnValue(
+        table.soldAt,
         value,
       );
 }
@@ -266,8 +343,24 @@ class ItemTable extends _is.Table<int?> {
       'heldBy',
       this,
     );
+    heldByContact = _is.ColumnString(
+      'heldByContact',
+      this,
+    );
     holdExpiresAt = _is.ColumnDateTime(
       'holdExpiresAt',
+      this,
+    );
+    soldTo = _is.ColumnString(
+      'soldTo',
+      this,
+    );
+    soldToContact = _is.ColumnString(
+      'soldToContact',
+      this,
+    );
+    soldAt = _is.ColumnDateTime(
+      'soldAt',
       this,
     );
   }
@@ -286,7 +379,15 @@ class ItemTable extends _is.Table<int?> {
 
   late final _is.ColumnString heldBy;
 
+  late final _is.ColumnString heldByContact;
+
   late final _is.ColumnDateTime holdExpiresAt;
+
+  late final _is.ColumnString soldTo;
+
+  late final _is.ColumnString soldToContact;
+
+  late final _is.ColumnDateTime soldAt;
 
   @override
   List<_is.Column> get columns => [
@@ -297,7 +398,11 @@ class ItemTable extends _is.Table<int?> {
     quantity,
     status,
     heldBy,
+    heldByContact,
     holdExpiresAt,
+    soldTo,
+    soldToContact,
+    soldAt,
   ];
 }
 

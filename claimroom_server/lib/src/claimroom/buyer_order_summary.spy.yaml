@@ -1,0 +1,7 @@
+class: BuyerOrderSummary
+fields:
+  buyerName: String
+  buyerContact: String?
+  items: List<Item>
+  totalAmount: double
+  itemCount: int

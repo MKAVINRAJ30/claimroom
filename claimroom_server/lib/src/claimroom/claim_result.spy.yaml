@@ -1,0 +1,5 @@
+class: ClaimResult
+fields:
+  success: bool
+  message: String
+  item: Item?

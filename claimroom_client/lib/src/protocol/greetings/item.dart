@@ -22,7 +22,11 @@ abstract class Item
     required this.quantity,
     required this.status,
     this.heldBy,
+    this.heldByContact,
     this.holdExpiresAt,
+    this.soldTo,
+    this.soldToContact,
+    this.soldAt,
   });
 
   factory Item({
@@ -33,7 +37,11 @@ abstract class Item
     required int quantity,
     required String status,
     String? heldBy,
+    String? heldByContact,
     DateTime? holdExpiresAt,
+    String? soldTo,
+    String? soldToContact,
+    DateTime? soldAt,
   }) = _ItemImpl;
 
   factory Item.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -45,11 +53,17 @@ abstract class Item
       quantity: jsonSerialization['quantity'] as int,
       status: jsonSerialization['status'] as String,
       heldBy: jsonSerialization['heldBy'] as String?,
+      heldByContact: jsonSerialization['heldByContact'] as String?,
       holdExpiresAt: jsonSerialization['holdExpiresAt'] == null
           ? null
           : _isc.DateTimeJsonExtension.fromJson(
               jsonSerialization['holdExpiresAt'],
             ),
+      soldTo: jsonSerialization['soldTo'] as String?,
+      soldToContact: jsonSerialization['soldToContact'] as String?,
+      soldAt: jsonSerialization['soldAt'] == null
+          ? null
+          : _isc.DateTimeJsonExtension.fromJson(jsonSerialization['soldAt']),
     );
   }
 
@@ -70,7 +84,15 @@ abstract class Item
 
   String? heldBy;
 
+  String? heldByContact;
+
   DateTime? holdExpiresAt;
+
+  String? soldTo;
+
+  String? soldToContact;
+
+  DateTime? soldAt;
 
   /// Returns a shallow copy of this [Item]
   /// with some or all fields replaced by the given arguments.
@@ -83,7 +105,11 @@ abstract class Item
     int? quantity,
     String? status,
     String? heldBy,
+    String? heldByContact,
     DateTime? holdExpiresAt,
+    String? soldTo,
+    String? soldToContact,
+    DateTime? soldAt,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -96,7 +122,11 @@ abstract class Item
       'quantity': quantity,
       'status': status,
       if (heldBy != null) 'heldBy': heldBy,
+      if (heldByContact != null) 'heldByContact': heldByContact,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
+      if (soldTo != null) 'soldTo': soldTo,
+      if (soldToContact != null) 'soldToContact': soldToContact,
+      if (soldAt != null) 'soldAt': soldAt?.toJson(),
     };
   }
 
@@ -111,7 +141,11 @@ abstract class Item
       'quantity': quantity,
       'status': status,
       if (heldBy != null) 'heldBy': heldBy,
+      if (heldByContact != null) 'heldByContact': heldByContact,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
+      if (soldTo != null) 'soldTo': soldTo,
+      if (soldToContact != null) 'soldToContact': soldToContact,
+      if (soldAt != null) 'soldAt': soldAt?.toJson(),
     };
   }
 
@@ -132,7 +166,11 @@ class _ItemImpl extends Item {
     required int quantity,
     required String status,
     String? heldBy,
+    String? heldByContact,
     DateTime? holdExpiresAt,
+    String? soldTo,
+    String? soldToContact,
+    DateTime? soldAt,
   }) : super._(
          id: id,
          roomId: roomId,
@@ -141,7 +179,11 @@ class _ItemImpl extends Item {
          quantity: quantity,
          status: status,
          heldBy: heldBy,
+         heldByContact: heldByContact,
          holdExpiresAt: holdExpiresAt,
+         soldTo: soldTo,
+         soldToContact: soldToContact,
+         soldAt: soldAt,
        );
 
   /// Returns a shallow copy of this [Item]
@@ -156,7 +198,11 @@ class _ItemImpl extends Item {
     int? quantity,
     String? status,
     Object? heldBy = _Undefined,
+    Object? heldByContact = _Undefined,
     Object? holdExpiresAt = _Undefined,
+    Object? soldTo = _Undefined,
+    Object? soldToContact = _Undefined,
+    Object? soldAt = _Undefined,
   }) {
     return Item(
       id: id is int? ? id : this.id,
@@ -166,9 +212,17 @@ class _ItemImpl extends Item {
       quantity: quantity ?? this.quantity,
       status: status ?? this.status,
       heldBy: heldBy is String? ? heldBy : this.heldBy,
+      heldByContact: heldByContact is String?
+          ? heldByContact
+          : this.heldByContact,
       holdExpiresAt: holdExpiresAt is DateTime?
           ? holdExpiresAt
           : this.holdExpiresAt,
+      soldTo: soldTo is String? ? soldTo : this.soldTo,
+      soldToContact: soldToContact is String?
+          ? soldToContact
+          : this.soldToContact,
+      soldAt: soldAt is DateTime? ? soldAt : this.soldAt,
     );
   }
 }
