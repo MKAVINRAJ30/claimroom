@@ -566,7 +566,7 @@ void main() {
       );
 
       test(
-        'Buyer privacy: listItems and stream events contain no contact details; getOrderSheet retains contacts',
+        'Buyer-visible data (listItems, stream events, ClaimResult for others) contains no contact fields or tokens',
         () async {
           final room = await endpoints.room.createRoom(
             sessionBuilder,
@@ -621,6 +621,21 @@ void main() {
           expect(items.first.soldToContact, isNull);
           expect(items.first.heldByToken, isNull);
           expect(items.first.soldToToken, isNull);
+
+          // 3. Another buyer tries to claim held item -> ClaimResult has no contacts or tokens
+          final otherClaim = await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'OtherBuyer',
+            null,
+            'token_other_987654321',
+          );
+          expect(otherClaim.success, isFalse);
+          expect(otherClaim.item, isNotNull);
+          expect(otherClaim.item!.heldByContact, isNull);
+          expect(otherClaim.item!.soldToContact, isNull);
+          expect(otherClaim.item!.heldByToken, isNull);
+          expect(otherClaim.item!.soldToToken, isNull);
 
           // Buyer confirms claim
           final confirm = await endpoints.room.confirmClaim(
@@ -1105,6 +1120,64 @@ void main() {
           );
           expect(claimRes2.success, isTrue);
           expect(claimRes2.item!.heldBy, equals('Ananya'));
+        },
+      );
+
+      test(
+        'Concurrent confirm and release on the same hold: exactly one succeeds',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Concurrent Action Room',
+            'ConcurrentSeller',
+          );
+          final sellerKey = room.sellerKey!;
+
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Vintage Lamp',
+            850.0,
+            1,
+          );
+
+          const buyerToken = 'concurrent_buyer_token_12345';
+          final claim = await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'ConcurrentBuyer',
+            'buyer@concurrent.com',
+            buyerToken,
+          );
+          expect(claim.success, isTrue);
+
+          // Fire confirm and release concurrently on the same held item
+          final confirmFuture = endpoints.room.confirmClaim(
+            sessionBuilder,
+            item.id!,
+            buyerToken,
+          );
+          final releaseFuture = endpoints.room.releaseClaim(
+            sessionBuilder,
+            item.id!,
+            buyerToken,
+          );
+
+          final results = await Future.wait([confirmFuture, releaseFuture]);
+          final successCount = results.where((r) => r.success).length;
+          final failureCount = results.where((r) => !r.success).length;
+
+          // Exactly one must succeed, and the other must fail safely
+          expect(successCount, equals(1));
+          expect(failureCount, equals(1));
+
+          // Verify database state is consistent (either 'sold' or 'available', never corrupt)
+          final session = sessionBuilder.build();
+          final dbItem = await Item.db.findById(session, item.id!);
+          expect(dbItem, isNotNull);
+          expect(dbItem!.status, anyOf(equals('sold'), equals('available')));
+          await session.close();
         },
       );
     },
