@@ -22,12 +22,13 @@ abstract class OrderSheet
     required this.sellerName,
     required this.buyers,
     required this.grandTotal,
-    this.totalPaid,
-    this.totalUnpaid,
+    double? totalPaid,
+    double? totalUnpaid,
     required this.totalItemsSold,
     required this.totalItems,
     required this.generatedAt,
-  });
+  }) : totalPaid = totalPaid ?? 0.0,
+       totalUnpaid = totalUnpaid ?? 0.0;
 
   factory OrderSheet({
     required int roomId,
@@ -72,9 +73,9 @@ abstract class OrderSheet
 
   double grandTotal;
 
-  double? totalPaid;
+  double totalPaid;
 
-  double? totalUnpaid;
+  double totalUnpaid;
 
   int totalItemsSold;
 
@@ -106,8 +107,8 @@ abstract class OrderSheet
       'sellerName': sellerName,
       'buyers': buyers.toJson(valueToJson: (v) => v.toJson()),
       'grandTotal': grandTotal,
-      if (totalPaid != null) 'totalPaid': totalPaid,
-      if (totalUnpaid != null) 'totalUnpaid': totalUnpaid,
+      'totalPaid': totalPaid,
+      'totalUnpaid': totalUnpaid,
       'totalItemsSold': totalItemsSold,
       'totalItems': totalItems,
       'generatedAt': generatedAt.toJson(),
@@ -123,8 +124,8 @@ abstract class OrderSheet
       'sellerName': sellerName,
       'buyers': buyers.toJson(valueToJson: (v) => v.toJsonForProtocol()),
       'grandTotal': grandTotal,
-      if (totalPaid != null) 'totalPaid': totalPaid,
-      if (totalUnpaid != null) 'totalUnpaid': totalUnpaid,
+      'totalPaid': totalPaid,
+      'totalUnpaid': totalUnpaid,
       'totalItemsSold': totalItemsSold,
       'totalItems': totalItems,
       'generatedAt': generatedAt.toJson(),
@@ -136,8 +137,6 @@ abstract class OrderSheet
     return _isc.SerializationManager.encode(this);
   }
 }
-
-class _Undefined {}
 
 class _OrderSheetImpl extends OrderSheet {
   _OrderSheetImpl({
@@ -174,8 +173,8 @@ class _OrderSheetImpl extends OrderSheet {
     String? sellerName,
     List<_iwmvbw5m.BuyerOrderSummary>? buyers,
     double? grandTotal,
-    Object? totalPaid = _Undefined,
-    Object? totalUnpaid = _Undefined,
+    double? totalPaid,
+    double? totalUnpaid,
     int? totalItemsSold,
     int? totalItems,
     DateTime? generatedAt,
@@ -186,8 +185,8 @@ class _OrderSheetImpl extends OrderSheet {
       sellerName: sellerName ?? this.sellerName,
       buyers: buyers ?? this.buyers.map((e0) => e0.copyWith()).toList(),
       grandTotal: grandTotal ?? this.grandTotal,
-      totalPaid: totalPaid is double? ? totalPaid : this.totalPaid,
-      totalUnpaid: totalUnpaid is double? ? totalUnpaid : this.totalUnpaid,
+      totalPaid: totalPaid ?? this.totalPaid,
+      totalUnpaid: totalUnpaid ?? this.totalUnpaid,
       totalItemsSold: totalItemsSold ?? this.totalItemsSold,
       totalItems: totalItems ?? this.totalItems,
       generatedAt: generatedAt ?? this.generatedAt,

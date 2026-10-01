@@ -106,8 +106,8 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
       'Items Sold: ${sheet.totalItemsSold} of ${sheet.totalItems}',
     );
     buffer.writeln('Grand Total: ₹${sheet.grandTotal.toStringAsFixed(0)}');
-    final paidVal = sheet.totalPaid ?? 0.0;
-    final unpaidVal = sheet.totalUnpaid ?? sheet.grandTotal;
+    final paidVal = sheet.totalPaid;
+    final unpaidVal = sheet.totalUnpaid;
     buffer.writeln(
       'Paid: ₹${paidVal.toStringAsFixed(0)} | Unpaid: ₹${unpaidVal.toStringAsFixed(0)}',
     );
@@ -211,8 +211,8 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
     }
 
     final sheet = _orderSheet!;
-    final totalPaid = sheet.totalPaid ?? 0.0;
-    final totalUnpaid = sheet.totalUnpaid ?? sheet.grandTotal;
+    final totalPaid = sheet.totalPaid;
+    final totalUnpaid = sheet.totalUnpaid;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),

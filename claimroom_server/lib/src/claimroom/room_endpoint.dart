@@ -151,11 +151,38 @@ class RoomEndpoint extends Endpoint {
       throw ArgumentError('Quantity must be between 1 and 99.');
     }
 
+    String? validatedImageUrl;
+    if (imageUrl != null) {
+      final trimmedUrl = imageUrl.trim();
+      if (trimmedUrl.isNotEmpty) {
+        if (trimmedUrl.length > 500) {
+          throw ArgumentError('Image URL cannot exceed 500 characters.');
+        }
+        if (!trimmedUrl.startsWith('http://') &&
+            !trimmedUrl.startsWith('https://')) {
+          throw ArgumentError(
+            'Image URL must start with http:// or https://',
+          );
+        }
+        validatedImageUrl = trimmedUrl;
+      }
+    }
+
     final room = await Room.db.findById(session, roomId);
     if (room == null) {
       throw ArgumentError('Room with ID $roomId does not exist.');
     }
     _verifySellerKey(room, sellerKey);
+
+    final currentCount = await Item.db.count(
+      session,
+      where: (t) => t.roomId.equals(roomId),
+    );
+    if (currentCount >= 50) {
+      throw ArgumentError(
+        'Room item limit reached: maximum 50 items per room.',
+      );
+    }
 
     final item = Item(
       roomId: roomId,
@@ -164,9 +191,7 @@ class RoomEndpoint extends Endpoint {
       quantity: quantity,
       status: 'available',
       paid: false,
-      imageUrl: (imageUrl != null && imageUrl.trim().isNotEmpty)
-          ? imageUrl.trim()
-          : null,
+      imageUrl: validatedImageUrl,
     );
     final inserted = await Item.db.insertRow(session, item);
 
@@ -274,6 +299,12 @@ class RoomEndpoint extends Endpoint {
       }
       _verifySellerKey(room, sellerKey);
 
+      if (item.status != 'sold') {
+        throw ArgumentError(
+          'Cannot mark payment: item has not been sold (current status: ${item.status}).',
+        );
+      }
+
       item.paid = paid;
       updatedItem = await Item.db.updateRow(
         session,
@@ -302,32 +333,56 @@ class RoomEndpoint extends Endpoint {
 
   /// Seller ends the live sale: closes the room, automatically releases any
   /// unconfirmed holds, and broadcasts sale_ended. Requires sellerKey.
+  /// Performed inside a single database transaction with LockMode.forUpdate on held items.
   Future<Room> endSale(
     Session session,
     int roomId,
     String sellerKey,
   ) async {
-    final room = await Room.db.findById(session, roomId);
-    if (room == null) throw Exception('Room not found');
-    _verifySellerKey(room, sellerKey);
+    final List<int> releasedItemIds = [];
+    Room? updatedRoom;
 
-    room.isOpen = false;
-    final updated = await Room.db.updateRow(session, room);
+    await session.db.transaction((transaction) async {
+      final room = await Room.db.findById(
+        session,
+        roomId,
+        transaction: transaction,
+        lockMode: LockMode.forUpdate,
+      );
+      if (room == null) throw Exception('Room not found');
+      _verifySellerKey(room, sellerKey);
 
-    // Release all active holds
-    final heldItems = await Item.db.find(
-      session,
-      where: (t) => t.roomId.equals(roomId) & t.status.equals('held'),
-    );
+      room.isOpen = false;
+      updatedRoom = await Room.db.updateRow(
+        session,
+        room,
+        transaction: transaction,
+      );
 
-    for (final item in heldItems) {
-      item.status = 'available';
-      item.heldBy = null;
-      item.heldByContact = null;
-      item.heldByToken = null;
-      item.holdExpiresAt = null;
-      await Item.db.updateRow(session, item);
-      await session.serverpod.futureCalls.cancel('hold_item_${item.id!}');
+      // Release all active holds inside this locked transaction
+      final heldItems = await Item.db.find(
+        session,
+        where: (t) => t.roomId.equals(roomId) & t.status.equals('held'),
+        transaction: transaction,
+        lockMode: LockMode.forUpdate,
+      );
+
+      for (final item in heldItems) {
+        item.status = 'available';
+        item.heldBy = null;
+        item.heldByContact = null;
+        item.heldByToken = null;
+        item.holdExpiresAt = null;
+        await Item.db.updateRow(session, item, transaction: transaction);
+        if (item.id != null) {
+          releasedItemIds.add(item.id!);
+        }
+      }
+    });
+
+    // Cancel matching future calls after the transaction completes
+    for (final itemId in releasedItemIds) {
+      await session.serverpod.futureCalls.cancel('hold_item_$itemId');
     }
 
     await session.messages.postMessage(
@@ -341,8 +396,8 @@ class RoomEndpoint extends Endpoint {
       ),
     );
 
-    updated.sellerKey = null;
-    return updated;
+    updatedRoom!.sellerKey = null;
+    return updatedRoom!;
   }
 
   /// Everyone in the room reads the current items.
@@ -422,7 +477,10 @@ class RoomEndpoint extends Endpoint {
 
       final now = DateTime.now().toUtc();
 
-      // Check claim limit per buyer token: max 3 simultaneously held items per buyer token in this room
+      // Check claim limit per buyer token: max 3 simultaneously held items per buyer token in this room.
+      // NOTE: The 3-hold check is performed within the item-lock transaction.
+      // Two simultaneous claims by the same token on different items could race and both succeed,
+      // which is a known minor trade-off to maintain high concurrency without table-level locking.
       final activeHolds = await Item.db.find(
         session,
         where: (t) =>

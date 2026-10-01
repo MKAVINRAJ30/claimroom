@@ -744,6 +744,237 @@ void main() {
           expect(releaseSuccess.item!.status, equals('available'));
         },
       );
+
+      test(
+        'markPaid fails on unsold item (available or held)',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'MarkPaid Room',
+            'SellerM',
+          );
+          final sellerKey = room.sellerKey!;
+
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Silk Shirt',
+            999.0,
+            1,
+          );
+
+          // 1. Available item cannot be marked paid
+          expect(
+            () => endpoints.room.markPaid(
+              sessionBuilder,
+              item.id!,
+              sellerKey,
+              true,
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // 2. Held item cannot be marked paid
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'BuyerH',
+            null,
+            'token_buyer_held_1234567890',
+          );
+          expect(
+            () => endpoints.room.markPaid(
+              sessionBuilder,
+              item.id!,
+              sellerKey,
+              true,
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+        },
+      );
+
+      test(
+        'endSale releases holds and claims fail afterwards',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'EndSale Room',
+            'SellerE',
+          );
+          final sellerKey = room.sellerKey!;
+
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Leather Wallet',
+            499.0,
+            1,
+          );
+
+          // Buyer holds the item
+          const buyerToken = 'token_endsale_buyer_123456';
+          final claim = await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'BuyerE',
+            null,
+            buyerToken,
+          );
+          expect(claim.success, isTrue);
+          expect(claim.item!.status, equals('held'));
+
+          // Seller ends the sale
+          final ended = await endpoints.room.endSale(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+          );
+          expect(ended.isOpen, isFalse);
+
+          // Verify held item was released back to 'available'
+          final session = sessionBuilder.build();
+          final dbItem = await Item.db.findById(session, item.id!);
+          expect(dbItem, isNotNull);
+          expect(dbItem!.status, equals('available'));
+          expect(dbItem.heldBy, isNull);
+          expect(dbItem.heldByToken, isNull);
+          expect(dbItem.holdExpiresAt, isNull);
+          await session.close();
+
+          // Claims after the sale ended must fail
+          final lateClaim = await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'LateBuyer',
+            null,
+            'token_late_buyer_12345678901',
+          );
+          expect(lateClaim.success, isFalse);
+          expect(lateClaim.message.toLowerCase(), contains('closed'));
+        },
+      );
+
+      test(
+        'addItem rejects invalid imageUrl and accepts valid or blank',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Image Room',
+            'SellerImg',
+          );
+          final sellerKey = room.sellerKey!;
+
+          // Rejects ftp://
+          expect(
+            () => endpoints.room.addItem(
+              sessionBuilder,
+              room.id!,
+              sellerKey,
+              'Invalid FTP',
+              100.0,
+              1,
+              imageUrl: 'ftp://example.com/pic.jpg',
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // Rejects non-url text
+          expect(
+            () => endpoints.room.addItem(
+              sessionBuilder,
+              room.id!,
+              sellerKey,
+              'Invalid Plain Text',
+              100.0,
+              1,
+              imageUrl: 'not-a-url',
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // Rejects url > 500 characters
+          final longUrl = 'https://example.com/${'x' * 500}';
+          expect(
+            () => endpoints.room.addItem(
+              sessionBuilder,
+              room.id!,
+              sellerKey,
+              'Too Long URL',
+              100.0,
+              1,
+              imageUrl: longUrl,
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // Accepts blank imageUrl and stores null
+          final blankItem = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Blank Image Item',
+            150.0,
+            1,
+            imageUrl: '   ',
+          );
+          expect(blankItem.imageUrl, isNull);
+
+          // Accepts valid https:// url
+          final validItem = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Valid Image Item',
+            200.0,
+            1,
+            imageUrl: 'https://images.unsplash.com/photo-test.jpg',
+          );
+          expect(
+            validItem.imageUrl,
+            equals('https://images.unsplash.com/photo-test.jpg'),
+          );
+        },
+      );
+
+      test(
+        'addItem rejects 51st item (room limit of 50)',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Limit 50 Room',
+            'SellerBulk',
+          );
+          final sellerKey = room.sellerKey!;
+
+          // Add 50 items
+          for (int i = 1; i <= 50; i++) {
+            await endpoints.room.addItem(
+              sessionBuilder,
+              room.id!,
+              sellerKey,
+              'Bulk Item $i',
+              10.0 + i,
+              1,
+            );
+          }
+
+          // 51st item must be rejected
+          expect(
+            () => endpoints.room.addItem(
+              sessionBuilder,
+              room.id!,
+              sellerKey,
+              '51st Item',
+              99.0,
+              1,
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+        },
+      );
     },
   );
 }

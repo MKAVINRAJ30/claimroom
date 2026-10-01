@@ -5,8 +5,8 @@ fields:
   sellerName: String
   buyers: List<BuyerOrderSummary>
   grandTotal: double
-  totalPaid: double?
-  totalUnpaid: double?
+  totalPaid: double, defaultModel=0.0
+  totalUnpaid: double, defaultModel=0.0
   totalItemsSold: int
   totalItems: int
   generatedAt: DateTime
