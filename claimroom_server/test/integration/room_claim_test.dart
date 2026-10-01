@@ -61,17 +61,21 @@ void main() {
           expect(items.length, 2);
 
           // 4. Atomic claim test: Two buyers try to claim item1 at the same instant
+          const priyaToken = 'token_priya_12345678901234';
+          const rahulToken = 'token_rahul_12345678901234';
           final futureClaim1 = endpoints.room.claimItem(
             sessionBuilder,
             item1.id!,
             'Priya',
             '+919876543210',
+            priyaToken,
           );
           final futureClaim2 = endpoints.room.claimItem(
             sessionBuilder,
             item1.id!,
             'Rahul',
             '+919876543211',
+            rahulToken,
           );
 
           final results = await Future.wait([futureClaim1, futureClaim2]);
@@ -87,23 +91,28 @@ void main() {
           expect(winningClaim.item!.status, 'held');
           final winningBuyer = winningClaim.item!.heldBy;
           expect(winningBuyer, isIn(['Priya', 'Rahul']));
+          final winningToken = winningBuyer == 'Priya'
+              ? priyaToken
+              : rahulToken;
 
           // 5. Confirm claim: The winning buyer confirms within hold window
           final confirmResult = await endpoints.room.confirmClaim(
             sessionBuilder,
             item1.id!,
-            winningBuyer!,
+            winningToken,
           );
           expect(confirmResult.success, isTrue);
           expect(confirmResult.item!.status, 'sold');
           expect(confirmResult.item!.soldTo, winningBuyer);
 
           // 6. Test claim & release on item2
+          const snehaToken = 'token_sneha_12345678901234';
           final claim2 = await endpoints.room.claimItem(
             sessionBuilder,
             item2.id!,
             'Sneha',
             '+919876543212',
+            snehaToken,
           );
           expect(claim2.success, isTrue);
           expect(claim2.item!.status, 'held');
@@ -112,7 +121,7 @@ void main() {
           final releaseResult = await endpoints.room.releaseClaim(
             sessionBuilder,
             item2.id!,
-            'Sneha',
+            snehaToken,
           );
           expect(releaseResult.success, isTrue);
           expect(releaseResult.item!.status, 'available');
@@ -121,15 +130,16 @@ void main() {
           final claim2Again = await endpoints.room.claimItem(
             sessionBuilder,
             item2.id!,
-            winningBuyer,
+            winningBuyer!,
             '+919876543210',
+            winningToken,
           );
           expect(claim2Again.success, isTrue);
 
           await endpoints.room.confirmClaim(
             sessionBuilder,
             item2.id!,
-            winningBuyer,
+            winningToken,
           );
 
           // 7. Mark item1 as paid
@@ -193,6 +203,7 @@ void main() {
               item.id!,
               'Buyer_$i',
               '+9190000000$i',
+              'token_buyer_${i}_123456789012',
             ),
           );
 
@@ -223,11 +234,13 @@ void main() {
             1,
           );
 
+          const mayaToken = 'token_maya_1234567890123456';
           final claim = await endpoints.room.claimItem(
             sessionBuilder,
             item.id!,
             'Maya',
             null,
+            mayaToken,
           );
           expect(claim.success, isTrue);
 
@@ -245,7 +258,7 @@ void main() {
           final confirm = await endpoints.room.confirmClaim(
             sessionBuilder,
             item.id!,
-            'Maya',
+            mayaToken,
           );
           expect(confirm.success, isFalse);
           expect(confirm.message.toLowerCase(), contains('expired'));
@@ -283,6 +296,7 @@ void main() {
             item.id!,
             'Varun',
             null,
+            'token_varun_1234567890123456',
           );
           expect(claim.success, isFalse);
           expect(claim.message.toLowerCase(), contains('closed'));
@@ -312,6 +326,7 @@ void main() {
             item.id!,
             'BuyerOne',
             null,
+            'token_one_1234567890123456',
           );
           expect(claim1.success, isTrue);
 
@@ -330,6 +345,7 @@ void main() {
             item.id!,
             'BuyerTwo',
             null,
+            'token_two_1234567890123456',
           );
           expect(claim2.success, isTrue);
           expect(claim2.item!.heldBy, equals('BuyerTwo'));
@@ -360,6 +376,7 @@ void main() {
             item.id!,
             'Rani',
             null,
+            'token_rani_1234567890123456',
           );
 
           // Attempt to delete held item should throw
@@ -505,6 +522,7 @@ void main() {
           );
 
           const buyerName = 'Shopaholic';
+          const shopaholicToken = 'token_shopaholic_12345678';
 
           // First 3 claims must succeed
           final c1 = await endpoints.room.claimItem(
@@ -512,6 +530,7 @@ void main() {
             item1.id!,
             buyerName,
             null,
+            shopaholicToken,
           );
           expect(c1.success, isTrue);
 
@@ -520,6 +539,7 @@ void main() {
             item2.id!,
             buyerName,
             null,
+            shopaholicToken,
           );
           expect(c2.success, isTrue);
 
@@ -528,6 +548,7 @@ void main() {
             item3.id!,
             buyerName,
             null,
+            shopaholicToken,
           );
           expect(c3.success, isTrue);
 
@@ -537,6 +558,7 @@ void main() {
             item4.id!,
             buyerName,
             null,
+            shopaholicToken,
           );
           expect(c4.success, isFalse);
           expect(c4.message.toLowerCase(), contains('limit'));
@@ -569,22 +591,26 @@ void main() {
           );
 
           // Buyer claims with private contact info
+          const secretToken = 'token_secret_12345678901234';
           final claim = await endpoints.room.claimItem(
             sessionBuilder,
             item.id!,
             'SecretBuyer',
             '+919999888877',
+            secretToken,
           );
           expect(claim.success, isTrue);
 
-          // 1. Verify stream event item has no contact fields
+          // 1. Verify stream event item has no contact fields or tokens
           final event = await streamFuture;
           expect(event.item, isNotNull);
           expect(event.item!.heldBy, equals('SecretBuyer'));
           expect(event.item!.heldByContact, isNull);
           expect(event.item!.soldToContact, isNull);
+          expect(event.item!.heldByToken, isNull);
+          expect(event.item!.soldToToken, isNull);
 
-          // 2. Verify listItems returns sanitized items with no contacts
+          // 2. Verify listItems returns sanitized items with no contacts or tokens
           final items = await endpoints.room.listItems(
             sessionBuilder,
             room.id!,
@@ -593,14 +619,18 @@ void main() {
           expect(items.first.heldBy, equals('SecretBuyer'));
           expect(items.first.heldByContact, isNull);
           expect(items.first.soldToContact, isNull);
+          expect(items.first.heldByToken, isNull);
+          expect(items.first.soldToToken, isNull);
 
           // Buyer confirms claim
           final confirm = await endpoints.room.confirmClaim(
             sessionBuilder,
             item.id!,
-            'SecretBuyer',
+            secretToken,
           );
           expect(confirm.success, isTrue);
+          expect(confirm.item!.heldByToken, isNull);
+          expect(confirm.item!.soldToToken, isNull);
 
           // 3. Verify getOrderSheet with sellerKey DOES retain buyer contact details
           final orderSheet = await endpoints.room.getOrderSheet(
@@ -611,6 +641,107 @@ void main() {
           expect(orderSheet.buyers.length, 1);
           expect(orderSheet.buyers.first.buyerName, equals('SecretBuyer'));
           expect(orderSheet.buyers.first.buyerContact, equals('+919999888877'));
+        },
+      );
+
+      test(
+        'Buyer identity by token: same name different token cannot confirm or release, wrong token fails, correct token confirms',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Token Identity Room',
+            'SellerTest',
+          );
+          final sellerKey = room.sellerKey!;
+
+          final item1 = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Handmade Vase',
+            750.0,
+            1,
+          );
+          final item2 = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Handmade Bowl',
+            450.0,
+            1,
+          );
+
+          const buyerName = 'DuplicateNameBuyer';
+          const tokenA = 'token_buyer_A_1111111111111';
+          const tokenB = 'token_buyer_B_2222222222222';
+
+          // Buyer A claims item1
+          final claim1 = await endpoints.room.claimItem(
+            sessionBuilder,
+            item1.id!,
+            buyerName,
+            '+911111111111',
+            tokenA,
+          );
+          expect(claim1.success, isTrue);
+
+          // Buyer B (same name, different token) tries to confirm Buyer A's hold -> fails
+          final confirmFail = await endpoints.room.confirmClaim(
+            sessionBuilder,
+            item1.id!,
+            tokenB,
+          );
+          expect(confirmFail.success, isFalse);
+          expect(
+            confirmFail.message.toLowerCase(),
+            contains('not have an active hold'),
+          );
+
+          // Buyer B tries to release Buyer A's hold -> fails
+          final releaseFail = await endpoints.room.releaseClaim(
+            sessionBuilder,
+            item1.id!,
+            tokenB,
+          );
+          expect(releaseFail.success, isFalse);
+          expect(releaseFail.message.toLowerCase(), contains('do not hold'));
+
+          // Buyer A confirms with correct token -> succeeds!
+          final confirmSuccess = await endpoints.room.confirmClaim(
+            sessionBuilder,
+            item1.id!,
+            tokenA,
+          );
+          expect(confirmSuccess.success, isTrue);
+          expect(confirmSuccess.item!.status, equals('sold'));
+          expect(confirmSuccess.item!.soldTo, equals(buyerName));
+
+          // Now test release with item2
+          final claim2 = await endpoints.room.claimItem(
+            sessionBuilder,
+            item2.id!,
+            buyerName,
+            null,
+            tokenA,
+          );
+          expect(claim2.success, isTrue);
+
+          // Buyer B cannot release item2
+          final releaseFail2 = await endpoints.room.releaseClaim(
+            sessionBuilder,
+            item2.id!,
+            tokenB,
+          );
+          expect(releaseFail2.success, isFalse);
+
+          // Buyer A can release item2
+          final releaseSuccess = await endpoints.room.releaseClaim(
+            sessionBuilder,
+            item2.id!,
+            tokenA,
+          );
+          expect(releaseSuccess.success, isTrue);
+          expect(releaseSuccess.item!.status, equals('available'));
         },
       );
     },

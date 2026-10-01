@@ -10,9 +10,11 @@ fields:
   imageUrl: String?
   heldBy: String?
   heldByContact: String?
+  heldByToken: String?
   holdExpiresAt: DateTime?
   soldTo: String?
   soldToContact: String?
+  soldToToken: String?
   soldAt: DateTime?
 indexes:
   item_room_idx:

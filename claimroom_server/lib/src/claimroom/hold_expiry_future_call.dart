@@ -24,6 +24,7 @@ class HoldExpiryFutureCall extends FutureCall {
           item.status = 'available';
           item.heldBy = null;
           item.heldByContact = null;
+          item.heldByToken = null;
           item.holdExpiresAt = null;
           releasedItem = await Item.db.updateRow(
             session,

@@ -6,5 +6,7 @@ Item sanitizeItem(Item item) {
   return item.copyWith(
     heldByContact: null,
     soldToContact: null,
+    heldByToken: null,
+    soldToToken: null,
   );
 }

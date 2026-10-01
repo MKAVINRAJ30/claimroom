@@ -24,9 +24,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     this.imageUrl,
     this.heldBy,
     this.heldByContact,
+    this.heldByToken,
     this.holdExpiresAt,
     this.soldTo,
     this.soldToContact,
+    this.soldToToken,
     this.soldAt,
   }) : paid = paid ?? false;
 
@@ -41,9 +43,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     String? imageUrl,
     String? heldBy,
     String? heldByContact,
+    String? heldByToken,
     DateTime? holdExpiresAt,
     String? soldTo,
     String? soldToContact,
+    String? soldToToken,
     DateTime? soldAt,
   }) = _ItemImpl;
 
@@ -61,6 +65,7 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       imageUrl: jsonSerialization['imageUrl'] as String?,
       heldBy: jsonSerialization['heldBy'] as String?,
       heldByContact: jsonSerialization['heldByContact'] as String?,
+      heldByToken: jsonSerialization['heldByToken'] as String?,
       holdExpiresAt: jsonSerialization['holdExpiresAt'] == null
           ? null
           : _is.DateTimeJsonExtension.fromJson(
@@ -68,6 +73,7 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
             ),
       soldTo: jsonSerialization['soldTo'] as String?,
       soldToContact: jsonSerialization['soldToContact'] as String?,
+      soldToToken: jsonSerialization['soldToToken'] as String?,
       soldAt: jsonSerialization['soldAt'] == null
           ? null
           : _is.DateTimeJsonExtension.fromJson(jsonSerialization['soldAt']),
@@ -99,11 +105,15 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
 
   String? heldByContact;
 
+  String? heldByToken;
+
   DateTime? holdExpiresAt;
 
   String? soldTo;
 
   String? soldToContact;
+
+  String? soldToToken;
 
   DateTime? soldAt;
 
@@ -124,9 +134,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     String? imageUrl,
     String? heldBy,
     String? heldByContact,
+    String? heldByToken,
     DateTime? holdExpiresAt,
     String? soldTo,
     String? soldToContact,
+    String? soldToToken,
     DateTime? soldAt,
   });
   @override
@@ -143,9 +155,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       if (imageUrl != null) 'imageUrl': imageUrl,
       if (heldBy != null) 'heldBy': heldBy,
       if (heldByContact != null) 'heldByContact': heldByContact,
+      if (heldByToken != null) 'heldByToken': heldByToken,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
       if (soldTo != null) 'soldTo': soldTo,
       if (soldToContact != null) 'soldToContact': soldToContact,
+      if (soldToToken != null) 'soldToToken': soldToToken,
       if (soldAt != null) 'soldAt': soldAt?.toJson(),
     };
   }
@@ -164,9 +178,11 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       if (imageUrl != null) 'imageUrl': imageUrl,
       if (heldBy != null) 'heldBy': heldBy,
       if (heldByContact != null) 'heldByContact': heldByContact,
+      if (heldByToken != null) 'heldByToken': heldByToken,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
       if (soldTo != null) 'soldTo': soldTo,
       if (soldToContact != null) 'soldToContact': soldToContact,
+      if (soldToToken != null) 'soldToToken': soldToToken,
       if (soldAt != null) 'soldAt': soldAt?.toJson(),
     };
   }
@@ -213,9 +229,11 @@ class _ItemImpl extends Item {
     String? imageUrl,
     String? heldBy,
     String? heldByContact,
+    String? heldByToken,
     DateTime? holdExpiresAt,
     String? soldTo,
     String? soldToContact,
+    String? soldToToken,
     DateTime? soldAt,
   }) : super._(
          id: id,
@@ -228,9 +246,11 @@ class _ItemImpl extends Item {
          imageUrl: imageUrl,
          heldBy: heldBy,
          heldByContact: heldByContact,
+         heldByToken: heldByToken,
          holdExpiresAt: holdExpiresAt,
          soldTo: soldTo,
          soldToContact: soldToContact,
+         soldToToken: soldToToken,
          soldAt: soldAt,
        );
 
@@ -249,9 +269,11 @@ class _ItemImpl extends Item {
     Object? imageUrl = _Undefined,
     Object? heldBy = _Undefined,
     Object? heldByContact = _Undefined,
+    Object? heldByToken = _Undefined,
     Object? holdExpiresAt = _Undefined,
     Object? soldTo = _Undefined,
     Object? soldToContact = _Undefined,
+    Object? soldToToken = _Undefined,
     Object? soldAt = _Undefined,
   }) {
     return Item(
@@ -267,6 +289,7 @@ class _ItemImpl extends Item {
       heldByContact: heldByContact is String?
           ? heldByContact
           : this.heldByContact,
+      heldByToken: heldByToken is String? ? heldByToken : this.heldByToken,
       holdExpiresAt: holdExpiresAt is DateTime?
           ? holdExpiresAt
           : this.holdExpiresAt,
@@ -274,6 +297,7 @@ class _ItemImpl extends Item {
       soldToContact: soldToContact is String?
           ? soldToContact
           : this.soldToContact,
+      soldToToken: soldToToken is String? ? soldToToken : this.soldToToken,
       soldAt: soldAt is DateTime? ? soldAt : this.soldAt,
     );
   }
@@ -328,6 +352,11 @@ class ItemUpdateTable extends _is.UpdateTable<ItemTable> {
         value,
       );
 
+  _is.ColumnValue<String, String> heldByToken(String? value) => _is.ColumnValue(
+    table.heldByToken,
+    value,
+  );
+
   _is.ColumnValue<DateTime, DateTime> holdExpiresAt(DateTime? value) =>
       _is.ColumnValue(
         table.holdExpiresAt,
@@ -344,6 +373,11 @@ class ItemUpdateTable extends _is.UpdateTable<ItemTable> {
         table.soldToContact,
         value,
       );
+
+  _is.ColumnValue<String, String> soldToToken(String? value) => _is.ColumnValue(
+    table.soldToToken,
+    value,
+  );
 
   _is.ColumnValue<DateTime, DateTime> soldAt(DateTime? value) =>
       _is.ColumnValue(
@@ -392,6 +426,10 @@ class ItemTable extends _is.Table<int?> {
       'heldByContact',
       this,
     );
+    heldByToken = _is.ColumnString(
+      'heldByToken',
+      this,
+    );
     holdExpiresAt = _is.ColumnDateTime(
       'holdExpiresAt',
       this,
@@ -402,6 +440,10 @@ class ItemTable extends _is.Table<int?> {
     );
     soldToContact = _is.ColumnString(
       'soldToContact',
+      this,
+    );
+    soldToToken = _is.ColumnString(
+      'soldToToken',
       this,
     );
     soldAt = _is.ColumnDateTime(
@@ -430,11 +472,15 @@ class ItemTable extends _is.Table<int?> {
 
   late final _is.ColumnString heldByContact;
 
+  late final _is.ColumnString heldByToken;
+
   late final _is.ColumnDateTime holdExpiresAt;
 
   late final _is.ColumnString soldTo;
 
   late final _is.ColumnString soldToContact;
+
+  late final _is.ColumnString soldToToken;
 
   late final _is.ColumnDateTime soldAt;
 
@@ -450,9 +496,11 @@ class ItemTable extends _is.Table<int?> {
     imageUrl,
     heldBy,
     heldByContact,
+    heldByToken,
     holdExpiresAt,
     soldTo,
     soldToContact,
+    soldToToken,
     soldAt,
   ];
 }

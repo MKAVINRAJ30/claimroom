@@ -25,9 +25,11 @@ abstract class Item
     this.imageUrl,
     this.heldBy,
     this.heldByContact,
+    this.heldByToken,
     this.holdExpiresAt,
     this.soldTo,
     this.soldToContact,
+    this.soldToToken,
     this.soldAt,
   }) : paid = paid ?? false;
 
@@ -42,9 +44,11 @@ abstract class Item
     String? imageUrl,
     String? heldBy,
     String? heldByContact,
+    String? heldByToken,
     DateTime? holdExpiresAt,
     String? soldTo,
     String? soldToContact,
+    String? soldToToken,
     DateTime? soldAt,
   }) = _ItemImpl;
 
@@ -62,6 +66,7 @@ abstract class Item
       imageUrl: jsonSerialization['imageUrl'] as String?,
       heldBy: jsonSerialization['heldBy'] as String?,
       heldByContact: jsonSerialization['heldByContact'] as String?,
+      heldByToken: jsonSerialization['heldByToken'] as String?,
       holdExpiresAt: jsonSerialization['holdExpiresAt'] == null
           ? null
           : _isc.DateTimeJsonExtension.fromJson(
@@ -69,6 +74,7 @@ abstract class Item
             ),
       soldTo: jsonSerialization['soldTo'] as String?,
       soldToContact: jsonSerialization['soldToContact'] as String?,
+      soldToToken: jsonSerialization['soldToToken'] as String?,
       soldAt: jsonSerialization['soldAt'] == null
           ? null
           : _isc.DateTimeJsonExtension.fromJson(jsonSerialization['soldAt']),
@@ -98,11 +104,15 @@ abstract class Item
 
   String? heldByContact;
 
+  String? heldByToken;
+
   DateTime? holdExpiresAt;
 
   String? soldTo;
 
   String? soldToContact;
+
+  String? soldToToken;
 
   DateTime? soldAt;
 
@@ -120,9 +130,11 @@ abstract class Item
     String? imageUrl,
     String? heldBy,
     String? heldByContact,
+    String? heldByToken,
     DateTime? holdExpiresAt,
     String? soldTo,
     String? soldToContact,
+    String? soldToToken,
     DateTime? soldAt,
   });
   @override
@@ -139,9 +151,11 @@ abstract class Item
       if (imageUrl != null) 'imageUrl': imageUrl,
       if (heldBy != null) 'heldBy': heldBy,
       if (heldByContact != null) 'heldByContact': heldByContact,
+      if (heldByToken != null) 'heldByToken': heldByToken,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
       if (soldTo != null) 'soldTo': soldTo,
       if (soldToContact != null) 'soldToContact': soldToContact,
+      if (soldToToken != null) 'soldToToken': soldToToken,
       if (soldAt != null) 'soldAt': soldAt?.toJson(),
     };
   }
@@ -160,9 +174,11 @@ abstract class Item
       if (imageUrl != null) 'imageUrl': imageUrl,
       if (heldBy != null) 'heldBy': heldBy,
       if (heldByContact != null) 'heldByContact': heldByContact,
+      if (heldByToken != null) 'heldByToken': heldByToken,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
       if (soldTo != null) 'soldTo': soldTo,
       if (soldToContact != null) 'soldToContact': soldToContact,
+      if (soldToToken != null) 'soldToToken': soldToToken,
       if (soldAt != null) 'soldAt': soldAt?.toJson(),
     };
   }
@@ -187,9 +203,11 @@ class _ItemImpl extends Item {
     String? imageUrl,
     String? heldBy,
     String? heldByContact,
+    String? heldByToken,
     DateTime? holdExpiresAt,
     String? soldTo,
     String? soldToContact,
+    String? soldToToken,
     DateTime? soldAt,
   }) : super._(
          id: id,
@@ -202,9 +220,11 @@ class _ItemImpl extends Item {
          imageUrl: imageUrl,
          heldBy: heldBy,
          heldByContact: heldByContact,
+         heldByToken: heldByToken,
          holdExpiresAt: holdExpiresAt,
          soldTo: soldTo,
          soldToContact: soldToContact,
+         soldToToken: soldToToken,
          soldAt: soldAt,
        );
 
@@ -223,9 +243,11 @@ class _ItemImpl extends Item {
     Object? imageUrl = _Undefined,
     Object? heldBy = _Undefined,
     Object? heldByContact = _Undefined,
+    Object? heldByToken = _Undefined,
     Object? holdExpiresAt = _Undefined,
     Object? soldTo = _Undefined,
     Object? soldToContact = _Undefined,
+    Object? soldToToken = _Undefined,
     Object? soldAt = _Undefined,
   }) {
     return Item(
@@ -241,6 +263,7 @@ class _ItemImpl extends Item {
       heldByContact: heldByContact is String?
           ? heldByContact
           : this.heldByContact,
+      heldByToken: heldByToken is String? ? heldByToken : this.heldByToken,
       holdExpiresAt: holdExpiresAt is DateTime?
           ? holdExpiresAt
           : this.holdExpiresAt,
@@ -248,6 +271,7 @@ class _ItemImpl extends Item {
       soldToContact: soldToContact is String?
           ? soldToContact
           : this.soldToContact,
+      soldToToken: soldToToken is String? ? soldToToken : this.soldToToken,
       soldAt: soldAt is DateTime? ? soldAt : this.soldAt,
     );
   }

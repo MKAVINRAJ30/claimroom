@@ -324,6 +324,7 @@ class RoomEndpoint extends Endpoint {
       item.status = 'available';
       item.heldBy = null;
       item.heldByContact = null;
+      item.heldByToken = null;
       item.holdExpiresAt = null;
       await Item.db.updateRow(session, item);
       await session.serverpod.futureCalls.cancel('hold_item_${item.id!}');
@@ -367,18 +368,26 @@ class RoomEndpoint extends Endpoint {
   /// If two buyers claim simultaneously, PostgreSQL row-level locks ensure only
   /// one succeeds.
   /// Expired holds are treated as available and reset automatically.
-  /// Enforces a maximum of 3 simultaneously active holds per buyer name in this room.
+  /// Enforces a maximum of 3 simultaneously active holds per buyer token in this room.
   Future<ClaimResult> claimItem(
     Session session,
     int itemId,
     String buyerName,
     String? buyerContact,
+    String buyerToken,
   ) async {
     final trimmedName = buyerName.trim();
+    final trimmedToken = buyerToken.trim();
     if (trimmedName.isEmpty) {
       return ClaimResult(
         success: false,
         message: 'Please enter your name to claim.',
+      );
+    }
+    if (trimmedToken.isEmpty) {
+      return ClaimResult(
+        success: false,
+        message: 'Invalid buyer session token.',
       );
     }
 
@@ -413,13 +422,13 @@ class RoomEndpoint extends Endpoint {
 
       final now = DateTime.now().toUtc();
 
-      // Check claim limit per buyer: max 3 simultaneously held items per buyer name in this room
+      // Check claim limit per buyer token: max 3 simultaneously held items per buyer token in this room
       final activeHolds = await Item.db.find(
         session,
         where: (t) =>
             t.roomId.equals(item.roomId) &
             t.status.equals('held') &
-            t.heldBy.equals(trimmedName) &
+            t.heldByToken.equals(trimmedToken) &
             (t.holdExpiresAt > now),
         transaction: transaction,
       );
@@ -454,6 +463,7 @@ class RoomEndpoint extends Endpoint {
       item.status = 'held';
       item.heldBy = trimmedName;
       item.heldByContact = buyerContact?.trim();
+      item.heldByToken = trimmedToken;
       item.holdExpiresAt = holdExpiresAt;
 
       final updated = await Item.db.updateRow(
@@ -465,7 +475,10 @@ class RoomEndpoint extends Endpoint {
       return ClaimResult(
         success: true,
         message: 'Item held for 60s! Confirm before the timer expires.',
-        item: updated,
+        item: updated.copyWith(
+          heldByToken: null,
+          soldToToken: null,
+        ),
       );
     });
 
@@ -497,12 +510,13 @@ class RoomEndpoint extends Endpoint {
 
   /// Buyer confirms their claim within the 60-second hold period.
   /// Converts hold state to permanent sold state.
+  /// Enforces token match so only the buyer session that held the item can confirm it.
   Future<ClaimResult> confirmClaim(
     Session session,
     int itemId,
-    String buyerName,
+    String buyerToken,
   ) async {
-    final trimmedName = buyerName.trim();
+    final trimmedToken = buyerToken.trim();
 
     ClaimResult result = await session.db.transaction((transaction) async {
       final item = await Item.db.findById(
@@ -519,7 +533,7 @@ class RoomEndpoint extends Endpoint {
         );
       }
 
-      if (item.status != 'held' || item.heldBy != trimmedName) {
+      if (item.status != 'held' || item.heldByToken != trimmedToken) {
         return ClaimResult(
           success: false,
           message: 'You do not have an active hold on this item.',
@@ -541,9 +555,11 @@ class RoomEndpoint extends Endpoint {
       item.status = 'sold';
       item.soldTo = item.heldBy;
       item.soldToContact = item.heldByContact;
+      item.soldToToken = item.heldByToken;
       item.soldAt = now;
       item.heldBy = null;
       item.heldByContact = null;
+      item.heldByToken = null;
       item.holdExpiresAt = null;
 
       final updated = await Item.db.updateRow(
@@ -555,7 +571,10 @@ class RoomEndpoint extends Endpoint {
       return ClaimResult(
         success: true,
         message: 'Order confirmed! Item marked as sold.',
-        item: updated,
+        item: updated.copyWith(
+          heldByToken: null,
+          soldToToken: null,
+        ),
       );
     });
 
@@ -570,7 +589,7 @@ class RoomEndpoint extends Endpoint {
           roomId: result.item!.roomId,
           type: 'item_confirmed',
           item: sanitizeItem(result.item!),
-          message: '${result.item!.name} sold to $trimmedName!',
+          message: '${result.item!.name} sold to ${result.item!.soldTo}!',
           timestamp: DateTime.now().toUtc(),
         ),
       );
@@ -580,12 +599,13 @@ class RoomEndpoint extends Endpoint {
   }
 
   /// Buyer cancels or releases a held item back to the room before expiry.
+  /// Enforces token match so only the buyer session that held the item can release it.
   Future<ClaimResult> releaseClaim(
     Session session,
     int itemId,
-    String buyerName,
+    String buyerToken,
   ) async {
-    final trimmedName = buyerName.trim();
+    final trimmedToken = buyerToken.trim();
 
     ClaimResult result = await session.db.transaction((transaction) async {
       final item = await Item.db.findById(
@@ -602,7 +622,7 @@ class RoomEndpoint extends Endpoint {
         );
       }
 
-      if (item.status != 'held' || item.heldBy != trimmedName) {
+      if (item.status != 'held' || item.heldByToken != trimmedToken) {
         return ClaimResult(
           success: false,
           message: 'You do not hold this item.',
@@ -613,6 +633,7 @@ class RoomEndpoint extends Endpoint {
       item.status = 'available';
       item.heldBy = null;
       item.heldByContact = null;
+      item.heldByToken = null;
       item.holdExpiresAt = null;
 
       final updated = await Item.db.updateRow(
@@ -624,7 +645,7 @@ class RoomEndpoint extends Endpoint {
       return ClaimResult(
         success: true,
         message: 'Item released back to the room.',
-        item: updated,
+        item: sanitizeItem(updated),
       );
     });
 

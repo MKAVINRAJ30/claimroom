@@ -921,6 +921,7 @@ class _RoomEndpoint {
     int itemId,
     String buyerName,
     String? buyerContact,
+    String buyerToken,
   ) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
@@ -937,6 +938,7 @@ class _RoomEndpoint {
             'itemId': itemId,
             'buyerName': buyerName,
             'buyerContact': buyerContact,
+            'buyerToken': buyerToken,
           }),
           serializationManager: _serializationManager,
         );
@@ -956,7 +958,7 @@ class _RoomEndpoint {
   _ida.Future<_iouny0wk.ClaimResult> confirmClaim(
     _ist.TestSessionBuilder sessionBuilder,
     int itemId,
-    String buyerName,
+    String buyerToken,
   ) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
@@ -971,7 +973,7 @@ class _RoomEndpoint {
           methodName: 'confirmClaim',
           parameters: _ist.testObjectToJson({
             'itemId': itemId,
-            'buyerName': buyerName,
+            'buyerToken': buyerToken,
           }),
           serializationManager: _serializationManager,
         );
@@ -991,7 +993,7 @@ class _RoomEndpoint {
   _ida.Future<_iouny0wk.ClaimResult> releaseClaim(
     _ist.TestSessionBuilder sessionBuilder,
     int itemId,
-    String buyerName,
+    String buyerToken,
   ) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
@@ -1006,7 +1008,7 @@ class _RoomEndpoint {
           methodName: 'releaseClaim',
           parameters: _ist.testObjectToJson({
             'itemId': itemId,
-            'buyerName': buyerName,
+            'buyerToken': buyerToken,
           }),
           serializationManager: _serializationManager,
         );

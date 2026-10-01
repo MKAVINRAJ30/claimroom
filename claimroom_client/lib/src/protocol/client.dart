@@ -384,6 +384,7 @@ class EndpointRoom extends _isc.EndpointRef {
   );
 
   /// Everyone in the room reads the current items.
+  /// Private contact fields are sanitized.
   _ida.Future<List<_idtbr1ys.Item>> listItems(int roomId) =>
       caller.callServerEndpoint<List<_idtbr1ys.Item>>(
         'room',
@@ -410,11 +411,12 @@ class EndpointRoom extends _isc.EndpointRef {
   /// If two buyers claim simultaneously, PostgreSQL row-level locks ensure only
   /// one succeeds.
   /// Expired holds are treated as available and reset automatically.
-  /// Enforces a maximum of 3 simultaneously active holds per buyer name in this room.
+  /// Enforces a maximum of 3 simultaneously active holds per buyer token in this room.
   _ida.Future<_i64ozq20.ClaimResult> claimItem(
     int itemId,
     String buyerName,
     String? buyerContact,
+    String buyerToken,
   ) => caller.callServerEndpoint<_i64ozq20.ClaimResult>(
     'room',
     'claimItem',
@@ -422,33 +424,36 @@ class EndpointRoom extends _isc.EndpointRef {
       'itemId': itemId,
       'buyerName': buyerName,
       'buyerContact': buyerContact,
+      'buyerToken': buyerToken,
     },
   );
 
   /// Buyer confirms their claim within the 60-second hold period.
   /// Converts hold state to permanent sold state.
+  /// Enforces token match so only the buyer session that held the item can confirm it.
   _ida.Future<_i64ozq20.ClaimResult> confirmClaim(
     int itemId,
-    String buyerName,
+    String buyerToken,
   ) => caller.callServerEndpoint<_i64ozq20.ClaimResult>(
     'room',
     'confirmClaim',
     {
       'itemId': itemId,
-      'buyerName': buyerName,
+      'buyerToken': buyerToken,
     },
   );
 
   /// Buyer cancels or releases a held item back to the room before expiry.
+  /// Enforces token match so only the buyer session that held the item can release it.
   _ida.Future<_i64ozq20.ClaimResult> releaseClaim(
     int itemId,
-    String buyerName,
+    String buyerToken,
   ) => caller.callServerEndpoint<_i64ozq20.ClaimResult>(
     'room',
     'releaseClaim',
     {
       'itemId': itemId,
-      'buyerName': buyerName,
+      'buyerToken': buyerToken,
     },
   );
 

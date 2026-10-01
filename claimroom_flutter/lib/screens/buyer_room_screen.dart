@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:claimroom_client/claimroom_client.dart';
 import '../client.dart';
+import '../utils/storage_helper.dart';
 import '../widgets/countdown_timer_widget.dart';
 
 class BuyerRoomScreen extends StatefulWidget {
@@ -22,6 +24,7 @@ class BuyerRoomScreen extends StatefulWidget {
 
 class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   late Room _room;
+  late String _buyerToken;
   List<Item> _items = [];
   bool _isLoading = true;
   bool _isReconnecting = false;
@@ -31,12 +34,40 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   Timer? _reconnectTimer;
   Timer? _pollingTimer;
 
+  static const _tokenChars =
+      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+  String _generateBuyerToken() {
+    final rnd = Random.secure();
+    return List.generate(
+      24,
+      (_) => _tokenChars[rnd.nextInt(_tokenChars.length)],
+    ).join();
+  }
+
+  void _initBuyerToken() {
+    final storageKey = 'claimroom_buyer_token_${_room.id}';
+    String? token;
+    try {
+      token = getStorageItem(storageKey);
+    } catch (_) {}
+
+    if (token == null || token.length < 24) {
+      token = _generateBuyerToken();
+      try {
+        setStorageItem(storageKey, token);
+      } catch (_) {}
+    }
+    _buyerToken = token;
+  }
+
   @override
   void initState() {
     super.initState();
     _room = widget.room;
     _buyerName = widget.initialBuyerName ?? '';
     _buyerContact = widget.initialBuyerContact ?? '';
+    _initBuyerToken();
 
     _loadItems();
     _subscribeToRoom();
@@ -243,6 +274,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
         item.id!,
         _buyerName,
         _buyerContact.isNotEmpty ? _buyerContact : null,
+        _buyerToken,
       );
 
       if (mounted) {
@@ -278,7 +310,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
 
   Future<void> _confirmClaim(Item item) async {
     try {
-      final result = await client.room.confirmClaim(item.id!, _buyerName);
+      final result = await client.room.confirmClaim(item.id!, _buyerToken);
       if (mounted) {
         if (result.success) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -306,7 +338,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
 
   Future<void> _releaseClaim(Item item) async {
     try {
-      await client.room.releaseClaim(item.id!, _buyerName);
+      await client.room.releaseClaim(item.id!, _buyerToken);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

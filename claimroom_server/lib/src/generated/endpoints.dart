@@ -543,6 +543,11 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<String?>(),
               nullable: true,
             ),
+            'buyerToken': _is.ParameterDescription(
+              name: 'buyerToken',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
           },
           call:
               (
@@ -554,6 +559,7 @@ class Endpoints extends _is.EndpointDispatch {
                     params['itemId'],
                     params['buyerName'],
                     params['buyerContact'],
+                    params['buyerToken'],
                   ),
         ),
         'confirmClaim': _is.MethodConnector(
@@ -564,8 +570,8 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<int>(),
               nullable: false,
             ),
-            'buyerName': _is.ParameterDescription(
-              name: 'buyerName',
+            'buyerToken': _is.ParameterDescription(
+              name: 'buyerToken',
               type: _is.getType<String>(),
               nullable: false,
             ),
@@ -578,7 +584,7 @@ class Endpoints extends _is.EndpointDispatch {
                   (endpoints['room'] as _iwlj7kd2.RoomEndpoint).confirmClaim(
                     session,
                     params['itemId'],
-                    params['buyerName'],
+                    params['buyerToken'],
                   ),
         ),
         'releaseClaim': _is.MethodConnector(
@@ -589,8 +595,8 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<int>(),
               nullable: false,
             ),
-            'buyerName': _is.ParameterDescription(
-              name: 'buyerName',
+            'buyerToken': _is.ParameterDescription(
+              name: 'buyerToken',
               type: _is.getType<String>(),
               nullable: false,
             ),
@@ -603,7 +609,7 @@ class Endpoints extends _is.EndpointDispatch {
                   (endpoints['room'] as _iwlj7kd2.RoomEndpoint).releaseClaim(
                     session,
                     params['itemId'],
-                    params['buyerName'],
+                    params['buyerToken'],
                   ),
         ),
         'getOrderSheet': _is.MethodConnector(

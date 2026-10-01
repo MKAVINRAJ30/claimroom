@@ -113,6 +113,12 @@ class Protocol extends _is.DatabaseSerializationManager {
           dartType: 'String?',
         ),
         _isp.ColumnDefinition(
+          name: 'heldByToken',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
           name: 'holdExpiresAt',
           columnType: _isp.ColumnType.timestampWithoutTimeZone,
           isNullable: true,
@@ -126,6 +132,12 @@ class Protocol extends _is.DatabaseSerializationManager {
         ),
         _isp.ColumnDefinition(
           name: 'soldToContact',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'soldToToken',
           columnType: _isp.ColumnType.text,
           isNullable: true,
           dartType: 'String?',
