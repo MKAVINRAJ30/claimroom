@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'client.dart';
 import 'screens/home_screen.dart';
 
+// Set for Serverpod Cloud: flutter run --dart-define=SERVER_URL=https://api.your-domain.serverpod.cloud
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeClient();

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../client.dart';
+import '../utils/storage_helper.dart';
 import 'seller_room_screen.dart';
 import 'buyer_room_screen.dart';
 
@@ -71,13 +73,145 @@ class _HomeScreenState extends State<HomeScreen>
       final room = await client.room.createRoom(title, sellerName);
       if (mounted) {
         setState(() => _isCreatingRoom = false);
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SellerRoomScreen(
-              room: room,
-              sellerKey: room.sellerKey,
+        final sellerKey = room.sellerKey ?? '';
+        if (sellerKey.isNotEmpty) {
+          try {
+            setStorageItem('seller_key_${room.id}', sellerKey);
+            setStorageItem('seller_key_code_${room.code}', sellerKey);
+          } catch (_) {}
+        }
+
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Color(0xFF10B981)),
+                SizedBox(width: 8),
+                Text('Room Created!'),
+              ],
             ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Room "${room.title}" is ready.'),
+                const SizedBox(height: 8),
+                Text(
+                  'Room Code: ${room.code}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Seller Key (Private):',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFCD34D)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: SelectableText(
+                          sellerKey,
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: Color(0xFF78350F),
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        tooltip: 'Copy Seller Key',
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: sellerKey));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Seller key copied to clipboard!'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 18,
+                        color: Colors.red.shade800,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Save this key to manage your sale later. It cannot be recovered.',
+                          style: TextStyle(
+                            color: Colors.red.shade900,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              OutlinedButton.icon(
+                icon: const Icon(Icons.copy, size: 16),
+                label: const Text('Copy Key'),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: sellerKey));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Seller key copied to clipboard!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SellerRoomScreen(
+                        room: room,
+                        sellerKey: sellerKey,
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Open Seller Dashboard'),
+              ),
+            ],
           ),
         );
       }
@@ -85,7 +219,10 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         setState(() => _isCreatingRoom = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create room: $e')),
+          SnackBar(
+            content: Text('Failed to create room: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
         );
       }
     }
@@ -93,7 +230,17 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _rejoinAsSeller() async {
     final code = _existingCodeCtrl.text.trim().toUpperCase();
-    final sellerKey = _existingSellerKeyCtrl.text.trim();
+    var sellerKey = _existingSellerKeyCtrl.text.trim();
+
+    if (sellerKey.isEmpty && code.isNotEmpty) {
+      try {
+        final saved = getStorageItem('seller_key_code_$code');
+        if (saved != null && saved.isNotEmpty) {
+          sellerKey = saved;
+          _existingSellerKeyCtrl.text = saved;
+        }
+      } catch (_) {}
+    }
 
     if (code.isEmpty || sellerKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -118,6 +265,11 @@ class _HomeScreenState extends State<HomeScreen>
           );
           return;
         }
+
+        try {
+          setStorageItem('seller_key_${room.id}', sellerKey);
+          setStorageItem('seller_key_code_${room.code}', sellerKey);
+        } catch (_) {}
 
         Navigator.push(
           context,

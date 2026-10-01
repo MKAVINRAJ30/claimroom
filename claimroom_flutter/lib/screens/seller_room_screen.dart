@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:claimroom_client/claimroom_client.dart';
 import '../client.dart';
+import '../utils/storage_helper.dart';
 import '../widgets/countdown_timer_widget.dart';
 import 'order_sheet_screen.dart';
 
@@ -34,7 +35,22 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
   void initState() {
     super.initState();
     _room = widget.room;
-    _sellerKey = widget.room.sellerKey ?? widget.sellerKey ?? '';
+    final providedKey = widget.room.sellerKey ?? widget.sellerKey;
+    if (providedKey != null && providedKey.isNotEmpty) {
+      _sellerKey = providedKey;
+      try {
+        setStorageItem('seller_key_${_room.id}', providedKey);
+        setStorageItem('seller_key_code_${_room.code}', providedKey);
+      } catch (_) {}
+    } else {
+      String? savedKey;
+      try {
+        savedKey =
+            getStorageItem('seller_key_${_room.id}') ??
+            getStorageItem('seller_key_code_${_room.code}');
+      } catch (_) {}
+      _sellerKey = savedKey ?? '';
+    }
     _loadItems();
     _subscribeToRoom();
 
@@ -324,10 +340,23 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                   imageUrl: imgUrl.isEmpty ? null : imgUrl,
                 );
                 _loadItems();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Added "$name" to room inventory!'),
+                      backgroundColor: const Color(0xFF10B981),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Failed to add item: $e')),
+                    SnackBar(
+                      content: Text('Failed to add item: $e'),
+                      backgroundColor: Colors.red.shade700,
+                      behavior: SnackBarBehavior.floating,
+                    ),
                   );
                 }
               }
@@ -363,6 +392,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
           const SnackBar(
             content: Text('Added 4 demo products for live sale!'),
             backgroundColor: Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -371,7 +401,8 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to seed demo items: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -382,10 +413,22 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     try {
       await client.room.deleteItem(item.id!, _sellerKey);
       _loadItems();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Deleted "${item.name}" from inventory.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cannot delete: $e')),
+          SnackBar(
+            content: Text('Cannot delete: $e'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -529,10 +572,10 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       const Text(
-                                        'Save this Seller Key to manage your sale room:',
+                                        'Save this key to manage your sale later. It cannot be recovered.',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                          fontWeight: FontWeight.bold,
                                           color: Color(0xFF92400E),
                                         ),
                                       ),

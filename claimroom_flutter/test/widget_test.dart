@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:claimroom_flutter/screens/home_screen.dart';
 
 void main() {
-  testWidgets('HomeScreen renders Create and Join tabs and buyer disclaimer', (WidgetTester tester) async {
+  testWidgets('HomeScreen renders Create and Join tabs and buyer disclaimer', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: HomeScreen(),
@@ -20,7 +22,9 @@ void main() {
 
     // Verify buyer disclaimer notice is rendered
     expect(
-      find.textContaining('ClaimRoom does not process payments or verify products'),
+      find.textContaining(
+        'ClaimRoom does not process payments or verify products',
+      ),
       findsOneWidget,
     );
   });
