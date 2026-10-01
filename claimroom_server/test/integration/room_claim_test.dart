@@ -1031,6 +1031,82 @@ void main() {
           );
         },
       );
+
+      test(
+        'Seller release abandoned hold: sellerKey required, resets to available and broadcasts',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Release Hold Room',
+            'ActiveSeller',
+          );
+          final sellerKey = room.sellerKey!;
+
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Handmade Vase',
+            600.0,
+            1,
+          );
+
+          // Buyer claims item
+          final token = 'buyer_token_123456789012';
+          final claimRes = await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'Priya',
+            'priya@example.com',
+            token,
+          );
+          expect(claimRes.success, isTrue);
+
+          // Wrong sellerKey fails
+          expect(
+            () => endpoints.room.releaseHoldAsSeller(
+              sessionBuilder,
+              item.id!,
+              'wrong_key_123456',
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // Correct sellerKey releases hold early
+          final released = await endpoints.room.releaseHoldAsSeller(
+            sessionBuilder,
+            item.id!,
+            sellerKey,
+          );
+          expect(released.status, equals('available'));
+          expect(released.heldBy, isNull);
+          expect(released.heldByContact, isNull);
+          expect(released.heldByToken, isNull);
+          expect(released.holdExpiresAt, isNull);
+
+          // Attempting to release an already available item fails
+          expect(
+            () => endpoints.room.releaseHoldAsSeller(
+              sessionBuilder,
+              item.id!,
+              sellerKey,
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // Another buyer can now claim the item
+          final token2 = 'buyer_token_987654321098';
+          final claimRes2 = await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'Ananya',
+            'ananya@example.com',
+            token2,
+          );
+          expect(claimRes2.success, isTrue);
+          expect(claimRes2.item!.heldBy, equals('Ananya'));
+        },
+      );
     },
   );
 }

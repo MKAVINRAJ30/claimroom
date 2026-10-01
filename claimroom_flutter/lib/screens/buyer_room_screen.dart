@@ -454,11 +454,12 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   }
 
   void _showMyBagSheet() {
+    final trimmedName = _buyerName.trim();
     final myHeld = _items
-        .where((i) => i.status == 'held' && i.heldBy == _buyerName)
+        .where((i) => i.status == 'held' && i.heldBy == trimmedName)
         .toList();
     final mySold = _items
-        .where((i) => i.status == 'sold' && i.soldTo == _buyerName)
+        .where((i) => i.status == 'sold' && i.soldTo == trimmedName)
         .toList();
     final total = [...myHeld, ...mySold].fold<double>(
       0.0,
@@ -730,13 +731,18 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final myClaimCount = _items
-        .where(
-          (i) =>
-              (i.status == 'held' && i.heldBy == _buyerName) ||
-              (i.status == 'sold' && i.soldTo == _buyerName),
-        )
-        .length;
+    final trimmedBuyer = _buyerName.trim();
+    final myHeldItems = _items
+        .where((i) => i.status == 'held' && i.heldBy == trimmedBuyer)
+        .toList();
+    final mySoldItems = _items
+        .where((i) => i.status == 'sold' && i.soldTo == trimmedBuyer)
+        .toList();
+    final myClaimCount = myHeldItems.length + mySoldItems.length;
+    final myRunningTotal = [...myHeldItems, ...mySoldItems].fold<double>(
+      0.0,
+      (sum, i) => sum + (i.price * i.quantity),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -1004,6 +1010,43 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
 
                       const SizedBox(height: 12),
 
+                      if (_items.isNotEmpty &&
+                          !_items.any((i) => i.status == 'available'))
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3E8FF),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFD8B4FE)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF8B5CF6),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _items.every((i) => i.status == 'sold')
+                                      ? 'All items sold! Every product in this room has been purchased.'
+                                      : 'All available items are currently held or sold.',
+                                  style: const TextStyle(
+                                    color: Color(0xFF6B21A8),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       if (_items.isEmpty)
                         Card(
                           shape: RoundedRectangleBorder(
@@ -1029,6 +1072,72 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                 ),
               ),
             ),
+      bottomNavigationBar: (trimmedBuyer.isNotEmpty && myClaimCount > 0)
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(20),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+                border: Border(
+                  top: BorderSide(color: Colors.grey.shade200),
+                ),
+              ),
+              child: SafeArea(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'My Items: $myClaimCount (${myHeldItems.length} held, ${mySoldItems.length} confirmed)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          'Running Total: ₹${myRunningTotal.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF10B981),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6366F1),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: _showMyBagSheet,
+                      icon: const Icon(Icons.shopping_bag_outlined, size: 18),
+                      label: const Text(
+                        'View My Items',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 

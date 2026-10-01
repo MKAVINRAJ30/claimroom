@@ -725,6 +725,83 @@ class RoomEndpoint extends Endpoint {
     return result;
   }
 
+  /// Seller forces the release of an abandoned hold back to the room before the 60s timer expires.
+  /// Requires a valid sellerKey.
+  /// Wrapped in a database transaction with LockMode.forUpdate to prevent race conditions.
+  Future<Item> releaseHoldAsSeller(
+    Session session,
+    int itemId,
+    String sellerKey,
+  ) async {
+    final item = await Item.db.findById(session, itemId);
+    if (item == null) {
+      throw ArgumentError('Item not found.');
+    }
+
+    final room = await Room.db.findById(session, item.roomId);
+    if (room == null) {
+      throw ArgumentError('Room not found.');
+    }
+    _verifySellerKey(room, sellerKey);
+
+    if (item.status != 'held') {
+      throw ArgumentError(
+        'Cannot release hold: item is not held (status: ${item.status}).',
+      );
+    }
+
+    Item? updatedItem;
+
+    await session.db.transaction((transaction) async {
+      final lockedItem = await Item.db.findById(
+        session,
+        itemId,
+        transaction: transaction,
+        lockMode: LockMode.forUpdate,
+      );
+
+      if (lockedItem == null) {
+        throw ArgumentError('Item not found.');
+      }
+
+      if (lockedItem.status != 'held') {
+        throw ArgumentError(
+          'Cannot release hold: item is not held (status: ${lockedItem.status}).',
+        );
+      }
+
+      lockedItem.status = 'available';
+      lockedItem.heldBy = null;
+      lockedItem.heldByContact = null;
+      lockedItem.heldByToken = null;
+      lockedItem.holdExpiresAt = null;
+
+      updatedItem = await Item.db.updateRow(
+        session,
+        lockedItem,
+        transaction: transaction,
+      );
+    });
+
+    // Cancel the scheduled expiry future call
+    await session.serverpod.futureCalls.cancel('hold_item_$itemId');
+
+    // Broadcast item_released event to room (sanitized)
+    await session.messages.postMessage(
+      'room_${updatedItem!.roomId}',
+      RoomEvent(
+        roomId: updatedItem!.roomId,
+        type: 'item_released',
+        item: sanitizeItem(updatedItem!),
+        message:
+            '${updatedItem!.name} hold was released by the seller and is available again!',
+        timestamp: DateTime.now().toUtc(),
+      ),
+    );
+
+    return sanitizeItem(updatedItem!);
+  }
+
   /// Generates the complete order sheet for the seller. Requires sellerKey.
   /// Aggregates all confirmed (sold) items grouped by buyer name.
   /// Quantity math: price is per unit, total = price * quantity.

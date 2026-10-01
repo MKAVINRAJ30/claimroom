@@ -24,6 +24,7 @@ room:
   - claimItem:
   - confirmClaim:
   - releaseClaim:
+  - releaseHoldAsSeller:
   - getOrderSheet:
   - reportRoom:
 greeting:

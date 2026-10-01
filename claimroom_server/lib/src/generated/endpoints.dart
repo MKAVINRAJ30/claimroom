@@ -612,6 +612,31 @@ class Endpoints extends _is.EndpointDispatch {
                     params['buyerToken'],
                   ),
         ),
+        'releaseHoldAsSeller': _is.MethodConnector(
+          name: 'releaseHoldAsSeller',
+          params: {
+            'itemId': _is.ParameterDescription(
+              name: 'itemId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'sellerKey': _is.ParameterDescription(
+              name: 'sellerKey',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _iwlj7kd2.RoomEndpoint)
+                  .releaseHoldAsSeller(
+                    session,
+                    params['itemId'],
+                    params['sellerKey'],
+                  ),
+        ),
         'getOrderSheet': _is.MethodConnector(
           name: 'getOrderSheet',
           params: {

@@ -434,6 +434,60 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     }
   }
 
+  Future<void> _releaseHold(Item item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Release Abandoned Hold?'),
+        content: Text(
+          'Release the hold on "${item.name}" held by ${item.heldBy ?? "a buyer"}? It will become available for everyone to claim immediately.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFD97706),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Release Hold'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await client.room.releaseHoldAsSeller(item.id!, _sellerKey);
+      _loadItems();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Released hold on "${item.name}". Item is available.',
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to release hold: $e'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   void _copyRoomCode() {
     Clipboard.setData(ClipboardData(text: _room.code));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -866,6 +920,43 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                       ),
                       const SizedBox(height: 10),
 
+                      if (_items.isNotEmpty &&
+                          !_items.any((i) => i.status == 'available'))
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3E8FF),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFD8B4FE)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF8B5CF6),
+                                size: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  _items.every((i) => i.status == 'sold')
+                                      ? 'All items sold! Every product in this room has been purchased.'
+                                      : 'All available items are currently held or sold.',
+                                  style: const TextStyle(
+                                    color: Color(0xFF6B21A8),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       if (_items.isEmpty)
                         Card(
                           shape: RoundedRectangleBorder(
@@ -955,6 +1046,16 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
           CountdownTimerWidget(
             expiresAt: item.holdExpiresAt,
             onExpired: () => _loadItems(),
+          ),
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(
+              Icons.lock_open,
+              color: Color(0xFFD97706),
+              size: 20,
+            ),
+            tooltip: 'Release hold early',
+            onPressed: () => _releaseHold(item),
           ),
         ],
       );

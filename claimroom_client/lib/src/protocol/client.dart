@@ -460,6 +460,21 @@ class EndpointRoom extends _isc.EndpointRef {
     },
   );
 
+  /// Seller forces the release of an abandoned hold back to the room before the 60s timer expires.
+  /// Requires a valid sellerKey.
+  /// Wrapped in a database transaction with LockMode.forUpdate to prevent race conditions.
+  _ida.Future<_idtbr1ys.Item> releaseHoldAsSeller(
+    int itemId,
+    String sellerKey,
+  ) => caller.callServerEndpoint<_idtbr1ys.Item>(
+    'room',
+    'releaseHoldAsSeller',
+    {
+      'itemId': itemId,
+      'sellerKey': sellerKey,
+    },
+  );
+
   /// Generates the complete order sheet for the seller. Requires sellerKey.
   /// Aggregates all confirmed (sold) items grouped by buyer name.
   /// Quantity math: price is per unit, total = price * quantity.
