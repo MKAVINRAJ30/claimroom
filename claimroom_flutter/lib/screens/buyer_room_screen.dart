@@ -357,6 +357,102 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
     }
   }
 
+  String _formatDateTime(DateTime dt) {
+    final local = dt.toLocal();
+    final hour = local.hour.toString().padLeft(2, '0');
+    final min = local.minute.toString().padLeft(2, '0');
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final year = local.year;
+    return '$day/$month/$year $hour:$min';
+  }
+
+  void _showReportRoomDialog() {
+    final reasonCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.flag_outlined, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('Report this Room'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Report room "${_room.title}" (Code: ${_room.code}) for suspicious activity, spam, or misleading claims.',
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              maxLength: 500,
+              decoration: const InputDecoration(
+                hintText: 'Describe the issue (max 500 chars)...',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              final reason = reasonCtrl.text.trim();
+              if (reason.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a reason for the report.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(ctx);
+              try {
+                await client.room.reportRoom(_room.code, reason);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Report submitted. Thank you for helping keep ClaimRoom safe.',
+                      ),
+                      backgroundColor: Color(0xFF10B981),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to submit report: $e'),
+                      backgroundColor: Colors.red.shade700,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Submit Report'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showMyBagSheet() {
     final myHeld = _items
         .where((i) => i.status == 'held' && i.heldBy == _buyerName)
@@ -523,9 +619,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
-            'The seller has concluded this live sale. New claims are closed.',
-            style: TextStyle(color: Color(0xFF7F1D1D), fontSize: 13),
+          Text(
+            'The seller (${_room.sellerName}) has concluded this live sale. Room created: ${_formatDateTime(_room.createdAt)}. New claims are closed.',
+            style: const TextStyle(color: Color(0xFF7F1D1D), fontSize: 13),
           ),
           const SizedBox(height: 12),
           Container(
@@ -567,27 +663,62 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                 else
                   ...myPurchases.map(
                     (i) => Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
-                            child: Text(
-                              '• ${i.name}${i.quantity > 1 ? " (x${i.quantity})" : ""}',
-                              style: const TextStyle(fontSize: 13),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  i.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                Text(
+                                  'Qty: ${i.quantity} × ₹${i.price.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           Text(
                             '₹${(i.price * i.quantity).toStringAsFixed(0)}',
                             style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
+                const Divider(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Seller: ${_room.sellerName}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      'Created: ${_formatDateTime(_room.createdAt)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -609,8 +740,25 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_room.title),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_room.title),
+            Text(
+              'by ${_room.sellerName} • ${_formatDateTime(_room.createdAt)}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.flag_outlined, size: 20),
+            onPressed: _showReportRoomDialog,
+            tooltip: 'Report this room',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => _loadItems(),
@@ -702,6 +850,67 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
 
                       // Feature E: Prominent Sale Ended Banner
                       if (!_room.isOpen) _buildSaleEndedBanner(theme),
+
+                      // Room Info Card: Seller name, creation time, and Report button
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.4),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.storefront,
+                              size: 20,
+                              color: Color(0xFF6366F1),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Seller: ${_room.sellerName}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Created: ${_formatDateTime(_room.createdAt)} • Code: ${_room.code}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            TextButton.icon(
+                              icon: const Icon(
+                                Icons.flag_outlined,
+                                size: 14,
+                                color: Colors.redAccent,
+                              ),
+                              label: const Text(
+                                'Report',
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              onPressed: _showReportRoomDialog,
+                            ),
+                          ],
+                        ),
+                      ),
 
                       // Buyer identity bar
                       Container(

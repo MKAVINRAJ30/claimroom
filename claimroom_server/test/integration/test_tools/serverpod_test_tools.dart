@@ -17,6 +17,8 @@ import 'package:claimroom_server/src/generated/claimroom/claim_result.dart'
     as _iouny0wk;
 import 'package:claimroom_server/src/generated/claimroom/order_sheet.dart'
     as _ik1soa64;
+import 'package:claimroom_server/src/generated/claimroom/report.dart'
+    as _iuzslksc;
 import 'package:claimroom_server/src/generated/claimroom/room_event.dart'
     as _i2147zem;
 import 'package:claimroom_server/src/generated/future_calls.dart' as _ibfxidep;
@@ -1053,6 +1055,41 @@ class _RoomEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<_ik1soa64.OrderSheet>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_iuzslksc.Report> reportRoom(
+    _ist.TestSessionBuilder sessionBuilder,
+    String roomCode,
+    String reason,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'reportRoom',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'reportRoom',
+          parameters: _ist.testObjectToJson({
+            'roomCode': roomCode,
+            'reason': reason,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_iuzslksc.Report>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();

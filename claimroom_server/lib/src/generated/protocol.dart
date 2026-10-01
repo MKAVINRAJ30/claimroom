@@ -22,6 +22,7 @@ import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
 import 'claimroom/buyer_order_summary.dart' as _it96tugq;
 import 'claimroom/claim_result.dart' as _in969j7u;
 import 'claimroom/order_sheet.dart' as _ihpac1yz;
+import 'claimroom/report.dart' as _ivdf4l49;
 import 'claimroom/room_event.dart' as _ii05qs2r;
 import 'future_calls_generated_models/hold_expiry_future_call_expire_hold_model.dart'
     as _inu78a98;
@@ -31,6 +32,7 @@ import 'greetings/room.dart' as _ihwvtgor;
 export 'claimroom/buyer_order_summary.dart';
 export 'claimroom/claim_result.dart';
 export 'claimroom/order_sheet.dart';
+export 'claimroom/report.dart';
 export 'claimroom/room_event.dart';
 export 'greetings/greeting.dart';
 export 'greetings/item.dart';
@@ -168,6 +170,42 @@ class Protocol extends _is.DatabaseSerializationManager {
       managed: true,
     ),
     _isp.TableDefinition(
+      name: 'report',
+      dartName: 'Report',
+      schema: 'public',
+      module: 'claimroom',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'roomId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'reason',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [],
+      managed: true,
+    ),
+    _isp.TableDefinition(
       name: 'room',
       dartName: 'Room',
       schema: 'public',
@@ -276,6 +314,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _ihpac1yz.OrderSheet) {
       return _ihpac1yz.OrderSheet.fromJson(data) as T;
     }
+    if (t == _ivdf4l49.Report) {
+      return _ivdf4l49.Report.fromJson(data) as T;
+    }
     if (t == _ii05qs2r.RoomEvent) {
       return _ii05qs2r.RoomEvent.fromJson(data) as T;
     }
@@ -300,6 +341,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _is.getType<_ihpac1yz.OrderSheet?>()) {
       return (data != null ? _ihpac1yz.OrderSheet.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ivdf4l49.Report?>()) {
+      return (data != null ? _ivdf4l49.Report.fromJson(data) : null) as T;
     }
     if (t == _is.getType<_ii05qs2r.RoomEvent?>()) {
       return (data != null ? _ii05qs2r.RoomEvent.fromJson(data) : null) as T;
@@ -350,6 +394,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       _it96tugq.BuyerOrderSummary => 'BuyerOrderSummary',
       _in969j7u.ClaimResult => 'ClaimResult',
       _ihpac1yz.OrderSheet => 'OrderSheet',
+      _ivdf4l49.Report => 'Report',
       _ii05qs2r.RoomEvent => 'RoomEvent',
       _inu78a98.HoldExpiryFutureCallExpireHoldModel =>
         'HoldExpiryFutureCallExpireHoldModel',
@@ -376,6 +421,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'ClaimResult';
       case _ihpac1yz.OrderSheet():
         return 'OrderSheet';
+      case _ivdf4l49.Report():
+        return 'Report';
       case _ii05qs2r.RoomEvent():
         return 'RoomEvent';
       case _inu78a98.HoldExpiryFutureCallExpireHoldModel():
@@ -420,6 +467,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'OrderSheet') {
       return deserialize<_ihpac1yz.OrderSheet>(data['data']);
+    }
+    if (dataClassName == 'Report') {
+      return deserialize<_ivdf4l49.Report>(data['data']);
     }
     if (dataClassName == 'RoomEvent') {
       return deserialize<_ii05qs2r.RoomEvent>(data['data']);
@@ -479,6 +529,8 @@ class Protocol extends _is.DatabaseSerializationManager {
       }
     }
     switch (t) {
+      case _ivdf4l49.Report:
+        return _ivdf4l49.Report.t;
       case _i1g1fq7w.Item:
         return _i1g1fq7w.Item.t;
       case _ihwvtgor.Room:

@@ -800,4 +800,41 @@ class RoomEndpoint extends Endpoint {
       generatedAt: DateTime.now().toUtc(),
     );
   }
+
+  /// Buyer reports a room for suspicious activity, scams, or abuse.
+  /// Requires a valid room code and non-empty reason of maximum 500 characters.
+  Future<Report> reportRoom(
+    Session session,
+    String roomCode,
+    String reason,
+  ) async {
+    final trimmedCode = roomCode.trim().toUpperCase();
+    final trimmedReason = reason.trim();
+
+    if (trimmedCode.isEmpty) {
+      throw ArgumentError('Room code cannot be empty.');
+    }
+    if (trimmedReason.isEmpty) {
+      throw ArgumentError('Report reason cannot be empty.');
+    }
+    if (trimmedReason.length > 500) {
+      throw ArgumentError('Report reason cannot exceed 500 characters.');
+    }
+
+    final room = await Room.db.findFirstRow(
+      session,
+      where: (t) => t.code.equals(trimmedCode),
+    );
+    if (room == null) {
+      throw ArgumentError('Room not found for code $trimmedCode.');
+    }
+
+    final report = Report(
+      roomId: room.id!,
+      reason: trimmedReason,
+      createdAt: DateTime.now().toUtc(),
+    );
+
+    return await Report.db.insertRow(session, report);
+  }
 }

@@ -15,6 +15,8 @@ import 'package:claimroom_client/src/protocol/claimroom/claim_result.dart'
     as _i64ozq20;
 import 'package:claimroom_client/src/protocol/claimroom/order_sheet.dart'
     as _i9f5dsxj;
+import 'package:claimroom_client/src/protocol/claimroom/report.dart'
+    as _i824jgjh;
 import 'package:claimroom_client/src/protocol/claimroom/room_event.dart'
     as _i0ir7zxv;
 import 'package:claimroom_client/src/protocol/greetings/greeting.dart'
@@ -371,6 +373,7 @@ class EndpointRoom extends _isc.EndpointRef {
 
   /// Seller ends the live sale: closes the room, automatically releases any
   /// unconfirmed holds, and broadcasts sale_ended. Requires sellerKey.
+  /// Performed inside a single database transaction with LockMode.forUpdate on held items.
   _ida.Future<_ilfa8wl2.Room> endSale(
     int roomId,
     String sellerKey,
@@ -470,6 +473,20 @@ class EndpointRoom extends _isc.EndpointRef {
     {
       'roomId': roomId,
       'sellerKey': sellerKey,
+    },
+  );
+
+  /// Buyer reports a room for suspicious activity, scams, or abuse.
+  /// Requires a valid room code and non-empty reason of maximum 500 characters.
+  _ida.Future<_i824jgjh.Report> reportRoom(
+    String roomCode,
+    String reason,
+  ) => caller.callServerEndpoint<_i824jgjh.Report>(
+    'room',
+    'reportRoom',
+    {
+      'roomCode': roomCode,
+      'reason': reason,
     },
   );
 }

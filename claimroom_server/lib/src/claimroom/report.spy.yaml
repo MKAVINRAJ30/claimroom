@@ -1,0 +1,6 @@
+class: Report
+table: report
+fields:
+  roomId: int
+  reason: String
+  createdAt: DateTime

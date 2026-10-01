@@ -390,7 +390,7 @@ class _HomeScreenState extends State<HomeScreen>
 
                   // Tab views
                   SizedBox(
-                    height: 340,
+                    height: 390,
                     child: TabBarView(
                       controller: _tabController,
                       children: [
@@ -513,55 +513,89 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildBuyerTab(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TextField(
-          controller: _codeCtrl,
-          textCapitalization: TextCapitalization.characters,
-          maxLength: 5,
-          decoration: const InputDecoration(
-            labelText: '5-Character Room Code',
-            hintText: 'e.g. K9X2P',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.vpn_key_outlined),
-            counterText: '',
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _buyerNameCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Your Name',
-            hintText: 'e.g. Priya',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.person_outline),
-          ),
-        ),
-        const SizedBox(height: 20),
-        ElevatedButton.icon(
-          icon: _isJoiningRoom
-              ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.login),
-          label: Text(_isJoiningRoom ? 'Joining...' : 'Join Sale Room'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF10B981),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _codeCtrl,
+            textCapitalization: TextCapitalization.characters,
+            maxLength: 5,
+            decoration: const InputDecoration(
+              labelText: '5-Character Room Code',
+              hintText: 'e.g. K9X2P',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.vpn_key_outlined),
+              counterText: '',
             ),
           ),
-          onPressed: _isJoiningRoom ? null : _joinRoom,
-        ),
-      ],
+          const SizedBox(height: 12),
+          TextField(
+            controller: _buyerNameCtrl,
+            decoration: const InputDecoration(
+              labelText: 'Your Name',
+              hintText: 'e.g. Priya',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.person_outline),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Trust & Safety Notice
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.shield_outlined,
+                  size: 18,
+                  color: Colors.amber.shade900,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'ClaimRoom does not process payments or verify products. Pay and inspect at your own discretion.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.amber.shade900,
+                      height: 1.3,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            icon: _isJoiningRoom
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Icon(Icons.login),
+            label: Text(_isJoiningRoom ? 'Joining...' : 'Join Sale Room'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: _isJoiningRoom ? null : _joinRoom,
+          ),
+        ],
+      ),
     );
   }
 }

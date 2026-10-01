@@ -637,6 +637,31 @@ class Endpoints extends _is.EndpointDispatch {
                     params['sellerKey'],
                   ),
         ),
+        'reportRoom': _is.MethodConnector(
+          name: 'reportRoom',
+          params: {
+            'roomCode': _is.ParameterDescription(
+              name: 'roomCode',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'reason': _is.ParameterDescription(
+              name: 'reason',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).reportRoom(
+                    session,
+                    params['roomCode'],
+                    params['reason'],
+                  ),
+        ),
         'streamRoom': _is.MethodStreamConnector(
           name: 'streamRoom',
           params: {

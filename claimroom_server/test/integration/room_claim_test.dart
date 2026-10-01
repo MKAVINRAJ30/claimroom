@@ -975,6 +975,62 @@ void main() {
           );
         },
       );
+
+      test(
+        'reportRoom accepts valid report and rejects empty or long reasons',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Trust & Safety Room',
+            'SuspiciousSeller',
+          );
+
+          // 1. Valid report
+          final report = await endpoints.room.reportRoom(
+            sessionBuilder,
+            room.code,
+            'Seller is charging extra delivery fee off-platform.',
+          );
+          expect(report.id, isNotNull);
+          expect(report.roomId, equals(room.id));
+          expect(
+            report.reason,
+            equals('Seller is charging extra delivery fee off-platform.'),
+          );
+          expect(report.createdAt, isNotNull);
+
+          // 2. Reject empty reason
+          expect(
+            () => endpoints.room.reportRoom(
+              sessionBuilder,
+              room.code,
+              '   ',
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // 3. Reject reason > 500 characters
+          final longReason = 'x' * 501;
+          expect(
+            () => endpoints.room.reportRoom(
+              sessionBuilder,
+              room.code,
+              longReason,
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // 4. Reject non-existent room code
+          expect(
+            () => endpoints.room.reportRoom(
+              sessionBuilder,
+              'ZZZZZ',
+              'Valid reason for non-existent room',
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+        },
+      );
     },
   );
 }
