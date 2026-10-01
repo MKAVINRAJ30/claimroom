@@ -6,6 +6,8 @@ fields:
   price: double
   quantity: int
   status: String
+  paid: bool, default=false
+  imageUrl: String?
   heldBy: String?
   heldByContact: String?
   holdExpiresAt: DateTime?

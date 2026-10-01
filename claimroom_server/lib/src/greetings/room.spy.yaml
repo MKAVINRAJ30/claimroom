@@ -4,6 +4,7 @@ fields:
   code: String
   title: String
   sellerName: String
+  sellerKey: String?
   isOpen: bool
   createdAt: DateTime
 indexes:

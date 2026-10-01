@@ -30,7 +30,9 @@ Future<String> resolveServerUrl() async {
     }
   } catch (e) {
     if (kDebugMode) {
-      debugPrint('Notice: assets/config.json not loaded, using local default ($e)');
+      debugPrint(
+        'Notice: assets/config.json not loaded, using local default ($e)',
+      );
     }
   }
 

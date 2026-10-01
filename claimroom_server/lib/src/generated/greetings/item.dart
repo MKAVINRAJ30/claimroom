@@ -20,13 +20,15 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     required this.price,
     required this.quantity,
     required this.status,
+    bool? paid,
+    this.imageUrl,
     this.heldBy,
     this.heldByContact,
     this.holdExpiresAt,
     this.soldTo,
     this.soldToContact,
     this.soldAt,
-  });
+  }) : paid = paid ?? false;
 
   factory Item({
     int? id,
@@ -35,6 +37,8 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     required double price,
     required int quantity,
     required String status,
+    bool? paid,
+    String? imageUrl,
     String? heldBy,
     String? heldByContact,
     DateTime? holdExpiresAt,
@@ -51,6 +55,10 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       price: (jsonSerialization['price'] as num).toDouble(),
       quantity: jsonSerialization['quantity'] as int,
       status: jsonSerialization['status'] as String,
+      paid: jsonSerialization['paid'] == null
+          ? null
+          : _is.BoolJsonExtension.fromJson(jsonSerialization['paid']),
+      imageUrl: jsonSerialization['imageUrl'] as String?,
       heldBy: jsonSerialization['heldBy'] as String?,
       heldByContact: jsonSerialization['heldByContact'] as String?,
       holdExpiresAt: jsonSerialization['holdExpiresAt'] == null
@@ -83,6 +91,10 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
 
   String status;
 
+  bool paid;
+
+  String? imageUrl;
+
   String? heldBy;
 
   String? heldByContact;
@@ -108,6 +120,8 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     double? price,
     int? quantity,
     String? status,
+    bool? paid,
+    String? imageUrl,
     String? heldBy,
     String? heldByContact,
     DateTime? holdExpiresAt,
@@ -125,6 +139,8 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       'price': price,
       'quantity': quantity,
       'status': status,
+      'paid': paid,
+      if (imageUrl != null) 'imageUrl': imageUrl,
       if (heldBy != null) 'heldBy': heldBy,
       if (heldByContact != null) 'heldByContact': heldByContact,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
@@ -144,6 +160,8 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       'price': price,
       'quantity': quantity,
       'status': status,
+      'paid': paid,
+      if (imageUrl != null) 'imageUrl': imageUrl,
       if (heldBy != null) 'heldBy': heldBy,
       if (heldByContact != null) 'heldByContact': heldByContact,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
@@ -191,6 +209,8 @@ class _ItemImpl extends Item {
     required double price,
     required int quantity,
     required String status,
+    bool? paid,
+    String? imageUrl,
     String? heldBy,
     String? heldByContact,
     DateTime? holdExpiresAt,
@@ -204,6 +224,8 @@ class _ItemImpl extends Item {
          price: price,
          quantity: quantity,
          status: status,
+         paid: paid,
+         imageUrl: imageUrl,
          heldBy: heldBy,
          heldByContact: heldByContact,
          holdExpiresAt: holdExpiresAt,
@@ -223,6 +245,8 @@ class _ItemImpl extends Item {
     double? price,
     int? quantity,
     String? status,
+    bool? paid,
+    Object? imageUrl = _Undefined,
     Object? heldBy = _Undefined,
     Object? heldByContact = _Undefined,
     Object? holdExpiresAt = _Undefined,
@@ -237,6 +261,8 @@ class _ItemImpl extends Item {
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
       status: status ?? this.status,
+      paid: paid ?? this.paid,
+      imageUrl: imageUrl is String? ? imageUrl : this.imageUrl,
       heldBy: heldBy is String? ? heldBy : this.heldBy,
       heldByContact: heldByContact is String?
           ? heldByContact
@@ -278,6 +304,16 @@ class ItemUpdateTable extends _is.UpdateTable<ItemTable> {
 
   _is.ColumnValue<String, String> status(String value) => _is.ColumnValue(
     table.status,
+    value,
+  );
+
+  _is.ColumnValue<bool, bool> paid(bool value) => _is.ColumnValue(
+    table.paid,
+    value,
+  );
+
+  _is.ColumnValue<String, String> imageUrl(String? value) => _is.ColumnValue(
+    table.imageUrl,
     value,
   );
 
@@ -339,6 +375,15 @@ class ItemTable extends _is.Table<int?> {
       'status',
       this,
     );
+    paid = _is.ColumnBool(
+      'paid',
+      this,
+      hasDefault: true,
+    );
+    imageUrl = _is.ColumnString(
+      'imageUrl',
+      this,
+    );
     heldBy = _is.ColumnString(
       'heldBy',
       this,
@@ -377,6 +422,10 @@ class ItemTable extends _is.Table<int?> {
 
   late final _is.ColumnString status;
 
+  late final _is.ColumnBool paid;
+
+  late final _is.ColumnString imageUrl;
+
   late final _is.ColumnString heldBy;
 
   late final _is.ColumnString heldByContact;
@@ -397,6 +446,8 @@ class ItemTable extends _is.Table<int?> {
     price,
     quantity,
     status,
+    paid,
+    imageUrl,
     heldBy,
     heldByContact,
     holdExpiresAt,

@@ -12,10 +12,13 @@ jwtRefresh:
 room:
   - createRoom:
   - getRoomByCode:
+  - verifySellerKey:
   - getRoom:
   - toggleRoomStatus:
   - addItem:
   - deleteItem:
+  - markPaid:
+  - endSale:
   - listItems:
   - streamRoom:
   - claimItem:

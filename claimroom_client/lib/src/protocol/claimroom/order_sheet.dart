@@ -22,6 +22,8 @@ abstract class OrderSheet
     required this.sellerName,
     required this.buyers,
     required this.grandTotal,
+    this.totalPaid,
+    this.totalUnpaid,
     required this.totalItemsSold,
     required this.totalItems,
     required this.generatedAt,
@@ -33,6 +35,8 @@ abstract class OrderSheet
     required String sellerName,
     required List<_iwmvbw5m.BuyerOrderSummary> buyers,
     required double grandTotal,
+    double? totalPaid,
+    double? totalUnpaid,
     required int totalItemsSold,
     required int totalItems,
     required DateTime generatedAt,
@@ -48,6 +52,8 @@ abstract class OrderSheet
             jsonSerialization['buyers'],
           ),
       grandTotal: (jsonSerialization['grandTotal'] as num).toDouble(),
+      totalPaid: (jsonSerialization['totalPaid'] as num?)?.toDouble(),
+      totalUnpaid: (jsonSerialization['totalUnpaid'] as num?)?.toDouble(),
       totalItemsSold: jsonSerialization['totalItemsSold'] as int,
       totalItems: jsonSerialization['totalItems'] as int,
       generatedAt: _isc.DateTimeJsonExtension.fromJson(
@@ -66,6 +72,10 @@ abstract class OrderSheet
 
   double grandTotal;
 
+  double? totalPaid;
+
+  double? totalUnpaid;
+
   int totalItemsSold;
 
   int totalItems;
@@ -81,6 +91,8 @@ abstract class OrderSheet
     String? sellerName,
     List<_iwmvbw5m.BuyerOrderSummary>? buyers,
     double? grandTotal,
+    double? totalPaid,
+    double? totalUnpaid,
     int? totalItemsSold,
     int? totalItems,
     DateTime? generatedAt,
@@ -94,6 +106,8 @@ abstract class OrderSheet
       'sellerName': sellerName,
       'buyers': buyers.toJson(valueToJson: (v) => v.toJson()),
       'grandTotal': grandTotal,
+      if (totalPaid != null) 'totalPaid': totalPaid,
+      if (totalUnpaid != null) 'totalUnpaid': totalUnpaid,
       'totalItemsSold': totalItemsSold,
       'totalItems': totalItems,
       'generatedAt': generatedAt.toJson(),
@@ -109,6 +123,8 @@ abstract class OrderSheet
       'sellerName': sellerName,
       'buyers': buyers.toJson(valueToJson: (v) => v.toJsonForProtocol()),
       'grandTotal': grandTotal,
+      if (totalPaid != null) 'totalPaid': totalPaid,
+      if (totalUnpaid != null) 'totalUnpaid': totalUnpaid,
       'totalItemsSold': totalItemsSold,
       'totalItems': totalItems,
       'generatedAt': generatedAt.toJson(),
@@ -121,6 +137,8 @@ abstract class OrderSheet
   }
 }
 
+class _Undefined {}
+
 class _OrderSheetImpl extends OrderSheet {
   _OrderSheetImpl({
     required int roomId,
@@ -128,6 +146,8 @@ class _OrderSheetImpl extends OrderSheet {
     required String sellerName,
     required List<_iwmvbw5m.BuyerOrderSummary> buyers,
     required double grandTotal,
+    double? totalPaid,
+    double? totalUnpaid,
     required int totalItemsSold,
     required int totalItems,
     required DateTime generatedAt,
@@ -137,6 +157,8 @@ class _OrderSheetImpl extends OrderSheet {
          sellerName: sellerName,
          buyers: buyers,
          grandTotal: grandTotal,
+         totalPaid: totalPaid,
+         totalUnpaid: totalUnpaid,
          totalItemsSold: totalItemsSold,
          totalItems: totalItems,
          generatedAt: generatedAt,
@@ -152,6 +174,8 @@ class _OrderSheetImpl extends OrderSheet {
     String? sellerName,
     List<_iwmvbw5m.BuyerOrderSummary>? buyers,
     double? grandTotal,
+    Object? totalPaid = _Undefined,
+    Object? totalUnpaid = _Undefined,
     int? totalItemsSold,
     int? totalItems,
     DateTime? generatedAt,
@@ -162,6 +186,8 @@ class _OrderSheetImpl extends OrderSheet {
       sellerName: sellerName ?? this.sellerName,
       buyers: buyers ?? this.buyers.map((e0) => e0.copyWith()).toList(),
       grandTotal: grandTotal ?? this.grandTotal,
+      totalPaid: totalPaid is double? ? totalPaid : this.totalPaid,
+      totalUnpaid: totalUnpaid is double? ? totalUnpaid : this.totalUnpaid,
       totalItemsSold: totalItemsSold ?? this.totalItemsSold,
       totalItems: totalItems ?? this.totalItems,
       generatedAt: generatedAt ?? this.generatedAt,

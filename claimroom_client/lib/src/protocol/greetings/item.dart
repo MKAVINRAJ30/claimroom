@@ -21,13 +21,15 @@ abstract class Item
     required this.price,
     required this.quantity,
     required this.status,
+    bool? paid,
+    this.imageUrl,
     this.heldBy,
     this.heldByContact,
     this.holdExpiresAt,
     this.soldTo,
     this.soldToContact,
     this.soldAt,
-  });
+  }) : paid = paid ?? false;
 
   factory Item({
     int? id,
@@ -36,6 +38,8 @@ abstract class Item
     required double price,
     required int quantity,
     required String status,
+    bool? paid,
+    String? imageUrl,
     String? heldBy,
     String? heldByContact,
     DateTime? holdExpiresAt,
@@ -52,6 +56,10 @@ abstract class Item
       price: (jsonSerialization['price'] as num).toDouble(),
       quantity: jsonSerialization['quantity'] as int,
       status: jsonSerialization['status'] as String,
+      paid: jsonSerialization['paid'] == null
+          ? null
+          : _isc.BoolJsonExtension.fromJson(jsonSerialization['paid']),
+      imageUrl: jsonSerialization['imageUrl'] as String?,
       heldBy: jsonSerialization['heldBy'] as String?,
       heldByContact: jsonSerialization['heldByContact'] as String?,
       holdExpiresAt: jsonSerialization['holdExpiresAt'] == null
@@ -82,6 +90,10 @@ abstract class Item
 
   String status;
 
+  bool paid;
+
+  String? imageUrl;
+
   String? heldBy;
 
   String? heldByContact;
@@ -104,6 +116,8 @@ abstract class Item
     double? price,
     int? quantity,
     String? status,
+    bool? paid,
+    String? imageUrl,
     String? heldBy,
     String? heldByContact,
     DateTime? holdExpiresAt,
@@ -121,6 +135,8 @@ abstract class Item
       'price': price,
       'quantity': quantity,
       'status': status,
+      'paid': paid,
+      if (imageUrl != null) 'imageUrl': imageUrl,
       if (heldBy != null) 'heldBy': heldBy,
       if (heldByContact != null) 'heldByContact': heldByContact,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
@@ -140,6 +156,8 @@ abstract class Item
       'price': price,
       'quantity': quantity,
       'status': status,
+      'paid': paid,
+      if (imageUrl != null) 'imageUrl': imageUrl,
       if (heldBy != null) 'heldBy': heldBy,
       if (heldByContact != null) 'heldByContact': heldByContact,
       if (holdExpiresAt != null) 'holdExpiresAt': holdExpiresAt?.toJson(),
@@ -165,6 +183,8 @@ class _ItemImpl extends Item {
     required double price,
     required int quantity,
     required String status,
+    bool? paid,
+    String? imageUrl,
     String? heldBy,
     String? heldByContact,
     DateTime? holdExpiresAt,
@@ -178,6 +198,8 @@ class _ItemImpl extends Item {
          price: price,
          quantity: quantity,
          status: status,
+         paid: paid,
+         imageUrl: imageUrl,
          heldBy: heldBy,
          heldByContact: heldByContact,
          holdExpiresAt: holdExpiresAt,
@@ -197,6 +219,8 @@ class _ItemImpl extends Item {
     double? price,
     int? quantity,
     String? status,
+    bool? paid,
+    Object? imageUrl = _Undefined,
     Object? heldBy = _Undefined,
     Object? heldByContact = _Undefined,
     Object? holdExpiresAt = _Undefined,
@@ -211,6 +235,8 @@ class _ItemImpl extends Item {
       price: price ?? this.price,
       quantity: quantity ?? this.quantity,
       status: status ?? this.status,
+      paid: paid ?? this.paid,
+      imageUrl: imageUrl is String? ? imageUrl : this.imageUrl,
       heldBy: heldBy is String? ? heldBy : this.heldBy,
       heldByContact: heldByContact is String?
           ? heldByContact

@@ -104,7 +104,8 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                 });
               } else if ((event.type == 'item_claimed' ||
                       event.type == 'item_confirmed' ||
-                      event.type == 'item_released') &&
+                      event.type == 'item_released' ||
+                      event.type == 'item_paid') &&
                   event.item != null) {
                 setState(() {
                   final idx = _items.indexWhere((i) => i.id == event.item!.id);
@@ -127,6 +128,21 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                     ),
                   );
                 }
+              } else if (event.type == 'sale_ended') {
+                setState(() {
+                  _room.isOpen = false;
+                });
+                _loadItems(isBackground: true);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '🔔 ${event.message ?? "The sale has ended! Thank you for participating."}',
+                    ),
+                    duration: const Duration(seconds: 4),
+                    backgroundColor: Colors.indigo.shade800,
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
               } else if (event.type == 'room_status_changed') {
                 _loadItems(isBackground: true);
               }
@@ -382,7 +398,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('₹${(item.price * item.quantity).toStringAsFixed(0)}'),
+                        Text(
+                          '₹${(item.price * item.quantity).toStringAsFixed(0)}',
+                        ),
                         const SizedBox(width: 8),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -431,6 +449,117 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSaleEndedBanner(ThemeData theme) {
+    final myPurchases = _items
+        .where((i) => i.status == 'sold' && i.soldTo == _buyerName.trim())
+        .toList();
+    final myTotal = myPurchases.fold<double>(
+      0.0,
+      (sum, i) => sum + (i.price * i.quantity),
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFCA5A5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.storefront_outlined,
+                color: Color(0xFFDC2626),
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Sale Ended',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF991B1B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'The seller has concluded this live sale. New claims are closed.',
+            style: TextStyle(color: Color(0xFF7F1D1D), fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFFECACA)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Your Confirmed Purchases (${myPurchases.length})',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      'Total: ₹${myTotal.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF10B981),
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (myPurchases.isEmpty)
+                  const Text(
+                    'You did not purchase any items during this sale. Thank you for joining!',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  )
+                else
+                  ...myPurchases.map(
+                    (i) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 3),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '• ${i.name}${i.quantity > 1 ? " (x${i.quantity})" : ""}',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                          Text(
+                            '₹${(i.price * i.quantity).toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -506,7 +635,10 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                       if (_isReconnecting)
                         Container(
                           margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.amber.shade100,
                             borderRadius: BorderRadius.circular(8),
@@ -536,6 +668,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                           ),
                         ),
 
+                      // Feature E: Prominent Sale Ended Banner
+                      if (!_room.isOpen) _buildSaleEndedBanner(theme),
+
                       // Buyer identity bar
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -543,7 +678,8 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withAlpha(128),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
@@ -593,7 +729,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                             decoration: BoxDecoration(
                               color: _room.isOpen
                                   ? const Color(0xFF10B981).withAlpha(38)
-                                  : Colors.grey.withAlpha(51),
+                                  : Colors.red.withAlpha(38),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
@@ -605,18 +741,18 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                                     shape: BoxShape.circle,
                                     color: _room.isOpen
                                         ? const Color(0xFF10B981)
-                                        : Colors.grey,
+                                        : Colors.red,
                                   ),
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  _room.isOpen ? 'LIVE SALE' : 'SALE PAUSED',
+                                  _room.isOpen ? 'LIVE SALE' : 'SALE ENDED',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 12,
                                     color: _room.isOpen
                                         ? const Color(0xFF10B981)
-                                        : Colors.grey.shade700,
+                                        : Colors.red.shade700,
                                   ),
                                 ),
                               ],
@@ -668,8 +804,8 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
         side: isHeldByMe
             ? const BorderSide(color: Color(0xFFF59E0B), width: 2)
             : (isSoldToMe
-                ? const BorderSide(color: Color(0xFF10B981), width: 2)
-                : BorderSide.none),
+                  ? const BorderSide(color: Color(0xFF10B981), width: 2)
+                  : BorderSide.none),
       ),
       elevation: isHeldByMe ? 4 : 1,
       child: Padding(
@@ -678,37 +814,59 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    '${item.name}$qtySuffix',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '₹${totalPrice.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF10B981),
-                      ),
-                    ),
-                    if (item.quantity > 1)
-                      Text(
-                        '₹${item.price.toStringAsFixed(0)}/ea',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        item.imageUrl!,
+                        width: 54,
+                        height: 54,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Container(
+                          width: 54,
+                          height: 54,
+                          color: Colors.grey.shade200,
+                          child: const Icon(
+                            Icons.image_not_supported,
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
-                  ],
+                    ),
+                  ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${item.name}$qtySuffix',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (item.quantity > 1)
+                        Text(
+                          '₹${item.price.toStringAsFixed(0)} each',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '₹${totalPrice.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF10B981),
+                  ),
                 ),
               ],
             ),
@@ -720,22 +878,24 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.flash_on),
-                  label: const Text(
-                    'CLAIM NOW',
-                    style: TextStyle(
+                  label: Text(
+                    _room.isOpen ? 'CLAIM NOW' : 'SALE CLOSED',
+                    style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.2,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6366F1),
+                    backgroundColor: _room.isOpen
+                        ? const Color(0xFF6366F1)
+                        : Colors.grey,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  onPressed: () => _claimItem(item),
+                  onPressed: _room.isOpen ? () => _claimItem(item) : null,
                 ),
               )
             else if (isHeldByMe)

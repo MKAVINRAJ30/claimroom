@@ -19,6 +19,7 @@ abstract class Room
     required this.code,
     required this.title,
     required this.sellerName,
+    this.sellerKey,
     required this.isOpen,
     required this.createdAt,
   });
@@ -28,6 +29,7 @@ abstract class Room
     required String code,
     required String title,
     required String sellerName,
+    String? sellerKey,
     required bool isOpen,
     required DateTime createdAt,
   }) = _RoomImpl;
@@ -38,6 +40,7 @@ abstract class Room
       code: jsonSerialization['code'] as String,
       title: jsonSerialization['title'] as String,
       sellerName: jsonSerialization['sellerName'] as String,
+      sellerKey: jsonSerialization['sellerKey'] as String?,
       isOpen: _isc.BoolJsonExtension.fromJson(jsonSerialization['isOpen']),
       createdAt: _isc.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
@@ -56,6 +59,8 @@ abstract class Room
 
   String sellerName;
 
+  String? sellerKey;
+
   bool isOpen;
 
   DateTime createdAt;
@@ -68,6 +73,7 @@ abstract class Room
     String? code,
     String? title,
     String? sellerName,
+    String? sellerKey,
     bool? isOpen,
     DateTime? createdAt,
   });
@@ -79,6 +85,7 @@ abstract class Room
       'code': code,
       'title': title,
       'sellerName': sellerName,
+      if (sellerKey != null) 'sellerKey': sellerKey,
       'isOpen': isOpen,
       'createdAt': createdAt.toJson(),
     };
@@ -92,6 +99,7 @@ abstract class Room
       'code': code,
       'title': title,
       'sellerName': sellerName,
+      if (sellerKey != null) 'sellerKey': sellerKey,
       'isOpen': isOpen,
       'createdAt': createdAt.toJson(),
     };
@@ -111,6 +119,7 @@ class _RoomImpl extends Room {
     required String code,
     required String title,
     required String sellerName,
+    String? sellerKey,
     required bool isOpen,
     required DateTime createdAt,
   }) : super._(
@@ -118,6 +127,7 @@ class _RoomImpl extends Room {
          code: code,
          title: title,
          sellerName: sellerName,
+         sellerKey: sellerKey,
          isOpen: isOpen,
          createdAt: createdAt,
        );
@@ -131,6 +141,7 @@ class _RoomImpl extends Room {
     String? code,
     String? title,
     String? sellerName,
+    Object? sellerKey = _Undefined,
     bool? isOpen,
     DateTime? createdAt,
   }) {
@@ -139,6 +150,7 @@ class _RoomImpl extends Room {
       code: code ?? this.code,
       title: title ?? this.title,
       sellerName: sellerName ?? this.sellerName,
+      sellerKey: sellerKey is String? ? sellerKey : this.sellerKey,
       isOpen: isOpen ?? this.isOpen,
       createdAt: createdAt ?? this.createdAt,
     );

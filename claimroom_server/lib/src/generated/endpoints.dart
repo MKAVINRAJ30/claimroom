@@ -305,6 +305,31 @@ class Endpoints extends _is.EndpointDispatch {
                     params['code'],
                   ),
         ),
+        'verifySellerKey': _is.MethodConnector(
+          name: 'verifySellerKey',
+          params: {
+            'code': _is.ParameterDescription(
+              name: 'code',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'sellerKey': _is.ParameterDescription(
+              name: 'sellerKey',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).verifySellerKey(
+                    session,
+                    params['code'],
+                    params['sellerKey'],
+                  ),
+        ),
         'getRoom': _is.MethodConnector(
           name: 'getRoom',
           params: {
@@ -331,6 +356,11 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<int>(),
               nullable: false,
             ),
+            'sellerKey': _is.ParameterDescription(
+              name: 'sellerKey',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
             'isOpen': _is.ParameterDescription(
               name: 'isOpen',
               type: _is.getType<bool>(),
@@ -345,6 +375,7 @@ class Endpoints extends _is.EndpointDispatch {
                   .toggleRoomStatus(
                     session,
                     params['roomId'],
+                    params['sellerKey'],
                     params['isOpen'],
                   ),
         ),
@@ -354,6 +385,11 @@ class Endpoints extends _is.EndpointDispatch {
             'roomId': _is.ParameterDescription(
               name: 'roomId',
               type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'sellerKey': _is.ParameterDescription(
+              name: 'sellerKey',
+              type: _is.getType<String>(),
               nullable: false,
             ),
             'name': _is.ParameterDescription(
@@ -371,6 +407,11 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<int>(),
               nullable: false,
             ),
+            'imageUrl': _is.ParameterDescription(
+              name: 'imageUrl',
+              type: _is.getType<String?>(),
+              nullable: true,
+            ),
           },
           call:
               (
@@ -379,9 +420,11 @@ class Endpoints extends _is.EndpointDispatch {
               ) async => (endpoints['room'] as _iwlj7kd2.RoomEndpoint).addItem(
                 session,
                 params['roomId'],
+                params['sellerKey'],
                 params['name'],
                 params['price'],
                 params['quantity'],
+                imageUrl: params['imageUrl'],
               ),
         ),
         'deleteItem': _is.MethodConnector(
@@ -390,6 +433,11 @@ class Endpoints extends _is.EndpointDispatch {
             'itemId': _is.ParameterDescription(
               name: 'itemId',
               type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'sellerKey': _is.ParameterDescription(
+              name: 'sellerKey',
+              type: _is.getType<String>(),
               nullable: false,
             ),
           },
@@ -401,7 +449,62 @@ class Endpoints extends _is.EndpointDispatch {
                   (endpoints['room'] as _iwlj7kd2.RoomEndpoint).deleteItem(
                     session,
                     params['itemId'],
+                    params['sellerKey'],
                   ),
+        ),
+        'markPaid': _is.MethodConnector(
+          name: 'markPaid',
+          params: {
+            'itemId': _is.ParameterDescription(
+              name: 'itemId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'sellerKey': _is.ParameterDescription(
+              name: 'sellerKey',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'paid': _is.ParameterDescription(
+              name: 'paid',
+              type: _is.getType<bool>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _iwlj7kd2.RoomEndpoint).markPaid(
+                session,
+                params['itemId'],
+                params['sellerKey'],
+                params['paid'],
+              ),
+        ),
+        'endSale': _is.MethodConnector(
+          name: 'endSale',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'sellerKey': _is.ParameterDescription(
+              name: 'sellerKey',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['room'] as _iwlj7kd2.RoomEndpoint).endSale(
+                session,
+                params['roomId'],
+                params['sellerKey'],
+              ),
         ),
         'listItems': _is.MethodConnector(
           name: 'listItems',
@@ -511,6 +614,11 @@ class Endpoints extends _is.EndpointDispatch {
               type: _is.getType<int>(),
               nullable: false,
             ),
+            'sellerKey': _is.ParameterDescription(
+              name: 'sellerKey',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
           },
           call:
               (
@@ -520,6 +628,7 @@ class Endpoints extends _is.EndpointDispatch {
                   (endpoints['room'] as _iwlj7kd2.RoomEndpoint).getOrderSheet(
                     session,
                     params['roomId'],
+                    params['sellerKey'],
                   ),
         ),
         'streamRoom': _is.MethodStreamConnector(

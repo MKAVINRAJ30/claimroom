@@ -70,13 +70,18 @@ class _CountdownTimerWidgetState extends State<CountdownTimerWidget> {
     final seconds = _secondsLeft % 60;
     final formatted = '$minutes:${seconds.toString().padLeft(2, '0')}';
 
+    final isUrgent = _secondsLeft < 10;
+    final defaultColor = isUrgent
+        ? const Color(0xFFDC2626)
+        : const Color(0xFFD97706);
+
     return Text(
       formatted,
       style:
           widget.style ??
-          const TextStyle(
+          TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFFD97706),
+            color: defaultColor,
           ),
     );
   }

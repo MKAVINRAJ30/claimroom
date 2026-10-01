@@ -8,10 +8,12 @@ import 'order_sheet_screen.dart';
 
 class SellerRoomScreen extends StatefulWidget {
   final Room room;
+  final String? sellerKey;
 
   const SellerRoomScreen({
     super.key,
     required this.room,
+    this.sellerKey,
   });
 
   @override
@@ -20,6 +22,7 @@ class SellerRoomScreen extends StatefulWidget {
 
 class _SellerRoomScreenState extends State<SellerRoomScreen> {
   late Room _room;
+  late String _sellerKey;
   List<Item> _items = [];
   bool _isLoading = true;
   bool _isReconnecting = false;
@@ -31,6 +34,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
   void initState() {
     super.initState();
     _room = widget.room;
+    _sellerKey = widget.room.sellerKey ?? widget.sellerKey ?? '';
     _loadItems();
     _subscribeToRoom();
 
@@ -94,7 +98,8 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                 });
               } else if ((event.type == 'item_claimed' ||
                       event.type == 'item_confirmed' ||
-                      event.type == 'item_released') &&
+                      event.type == 'item_released' ||
+                      event.type == 'item_paid') &&
                   event.item != null) {
                 setState(() {
                   final idx = _items.indexWhere((i) => i.id == event.item!.id);
@@ -114,7 +119,8 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                     ),
                   );
                 }
-              } else if (event.type == 'room_status_changed') {
+              } else if (event.type == 'room_status_changed' ||
+                  event.type == 'sale_ended') {
                 _refreshRoomDetails();
               }
             },
@@ -155,6 +161,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     try {
       final updated = await client.room.toggleRoomStatus(
         _room.id!,
+        _sellerKey,
         !_room.isOpen,
       );
       if (mounted) {
@@ -163,7 +170,58 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update room: $e')),
+          SnackBar(content: Text('Failed to update room status: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _endSale() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End Live Sale?'),
+        content: const Text(
+          'This will close the room to new claims, automatically release all unconfirmed holds back into inventory, and open your final order sheet.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('End Sale Now'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final updated = await client.room.endSale(_room.id!, _sellerKey);
+      if (mounted) {
+        setState(() => _room = updated);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OrderSheetScreen(
+              roomId: _room.id!,
+              roomTitle: _room.title,
+              sellerKey: _sellerKey,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to end sale: $e')),
         );
       }
     }
@@ -173,45 +231,60 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     final nameCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
     final quantityCtrl = TextEditingController(text: '1');
+    final imageUrlCtrl = TextEditingController();
 
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Add Product to Room'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Product Name',
-                hintText: 'e.g. 90s Vintage Leather Jacket',
-                border: OutlineInputBorder(),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Product Name',
+                  hintText: 'e.g. 90s Vintage Leather Jacket',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: priceCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(
-                labelText: 'Price per Unit (₹)',
-                hintText: 'e.g. 1499',
-                prefixText: '₹ ',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 12),
+              TextField(
+                controller: priceCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Price per Unit (₹)',
+                  hintText: 'e.g. 1499',
+                  prefixText: '₹ ',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: quantityCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Quantity (1-99)',
-                hintText: '1',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 12),
+              TextField(
+                controller: quantityCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Quantity (1-99)',
+                  hintText: '1',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: imageUrlCtrl,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  labelText: 'Image URL (optional)',
+                  hintText: 'https://images.unsplash.com/...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -223,11 +296,18 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
               final name = nameCtrl.text.trim();
               final price = double.tryParse(priceCtrl.text.trim());
               final quantity = int.tryParse(quantityCtrl.text.trim()) ?? 1;
+              final imgUrl = imageUrlCtrl.text.trim();
 
-              if (name.isEmpty || price == null || price <= 0 || quantity < 1 || quantity > 99) {
+              if (name.isEmpty ||
+                  price == null ||
+                  price <= 0 ||
+                  quantity < 1 ||
+                  quantity > 99) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
                   const SnackBar(
-                    content: Text('Please enter a valid name, price (>0), and quantity (1-99).'),
+                    content: Text(
+                      'Please enter a valid name, price (>0), and quantity (1-99).',
+                    ),
                   ),
                 );
                 return;
@@ -235,7 +315,14 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
 
               Navigator.pop(ctx);
               try {
-                await client.room.addItem(_room.id!, name, price, quantity);
+                await client.room.addItem(
+                  _room.id!,
+                  _sellerKey,
+                  name,
+                  price,
+                  quantity,
+                  imageUrl: imgUrl.isEmpty ? null : imgUrl,
+                );
                 _loadItems();
               } catch (e) {
                 if (mounted) {
@@ -255,14 +342,20 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
   Future<void> _seedDemoItems() async {
     try {
       final demoItems = [
-        ('Vintage Oversized Denim Jacket', 1499.0, 1),
-        ('Handmade Ceramic Coffee Mug', 399.0, 3),
-        ('Retro Aviator Sunglasses', 799.0, 1),
-        ('Pure Mulberry Silk Scarf', 649.0, 2),
+        ('[Demo] Vintage Oversized Denim Jacket', 1499.0, 1),
+        ('[Demo] Handmade Ceramic Coffee Mug', 399.0, 3),
+        ('[Demo] Retro Aviator Sunglasses', 799.0, 1),
+        ('[Demo] Pure Mulberry Silk Scarf', 649.0, 2),
       ];
 
       for (final item in demoItems) {
-        await client.room.addItem(_room.id!, item.$1, item.$2, item.$3);
+        await client.room.addItem(
+          _room.id!,
+          _sellerKey,
+          item.$1,
+          item.$2,
+          item.$3,
+        );
       }
       await _loadItems();
       if (mounted) {
@@ -287,7 +380,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
 
   Future<void> _deleteItem(Item item) async {
     try {
-      await client.room.deleteItem(item.id!);
+      await client.room.deleteItem(item.id!, _sellerKey);
       _loadItems();
     } catch (e) {
       if (mounted) {
@@ -304,6 +397,21 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
       SnackBar(
         content: Text('Room code "${_room.code}" copied to clipboard!'),
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _copyJoinLink() {
+    final origin = Uri.base.origin.isNotEmpty && Uri.base.origin != 'null'
+        ? Uri.base.origin
+        : 'https://claimroom.app';
+    final link = '$origin/?code=${_room.code}';
+    Clipboard.setData(ClipboardData(text: link));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Join link copied: $link'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: const Color(0xFF10B981),
       ),
     );
   }
@@ -337,6 +445,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                   builder: (_) => OrderSheetScreen(
                     roomId: _room.id!,
                     roomTitle: _room.title,
+                    sellerKey: _sellerKey,
                   ),
                 ),
               );
@@ -359,7 +468,10 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                       if (_isReconnecting)
                         Container(
                           margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.amber.shade100,
                             borderRadius: BorderRadius.circular(8),
@@ -389,7 +501,81 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                           ),
                         ),
 
-                      // Header Card with Room Code & Status
+                      // Seller Protection Secret Key Banner
+                      if (_sellerKey.isNotEmpty)
+                        Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          color: const Color(0xFFFEF3C7),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: Color(0xFFFCD34D)),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.vpn_key,
+                                  color: Color(0xFFD97706),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        'Save this Seller Key to manage your sale room:',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF92400E),
+                                        ),
+                                      ),
+                                      SelectableText(
+                                        _sellerKey,
+                                        style: const TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                          letterSpacing: 1.2,
+                                          color: Color(0xFF78350F),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.copy,
+                                    size: 18,
+                                    color: Color(0xFF92400E),
+                                  ),
+                                  tooltip: 'Copy Seller Key',
+                                  onPressed: () {
+                                    Clipboard.setData(
+                                      ClipboardData(text: _sellerKey),
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Seller key copied to clipboard!',
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // Header Card with Room Code, Status & Share link
                       Card(
                         elevation: 2,
                         shape: RoundedRectangleBorder(
@@ -400,10 +586,12 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                           child: Column(
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Seller: ${_room.sellerName}',
@@ -422,10 +610,14 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                             vertical: 6,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: theme.colorScheme.primary.withAlpha(25),
-                                            borderRadius: BorderRadius.circular(8),
+                                            color: theme.colorScheme.primary
+                                                .withAlpha(25),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                             border: Border.all(
-                                              color: theme.colorScheme.primary.withAlpha(70),
+                                              color: theme.colorScheme.primary
+                                                  .withAlpha(70),
                                             ),
                                           ),
                                           child: Row(
@@ -437,7 +629,8 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 18,
                                                   letterSpacing: 2,
-                                                  color: theme.colorScheme.primary,
+                                                  color:
+                                                      theme.colorScheme.primary,
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
@@ -448,40 +641,90 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                       ),
                                     ],
                                   ),
-                                  ElevatedButton.icon(
-                                    icon: Icon(
-                                      _room.isOpen
-                                          ? Icons.pause_circle_outline
-                                          : Icons.play_circle_outline,
-                                      color: Colors.white,
-                                    ),
-                                    label: Text(
-                                      _room.isOpen
-                                          ? 'Sale LIVE (Pause)'
-                                          : 'Sale PAUSED (Open)',
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: _room.isOpen
-                                          ? const Color(0xFF10B981)
-                                          : Colors.grey.shade600,
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    onPressed: _toggleRoomStatus,
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        icon: const Icon(Icons.link, size: 16),
+                                        label: const Text('Copy Join Link'),
+                                        style: OutlinedButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                        ),
+                                        onPressed: _copyJoinLink,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 10,
+                                            height: 10,
+                                            decoration: BoxDecoration(
+                                              color: _room.isOpen
+                                                  ? const Color(0xFF10B981)
+                                                  : Colors.red,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            _room.isOpen
+                                                ? 'LIVE OPEN'
+                                                : 'CLOSED',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              color: _room.isOpen
+                                                  ? const Color(0xFF10B981)
+                                                  : Colors.red,
+                                            ),
+                                          ),
+                                          Switch(
+                                            value: _room.isOpen,
+                                            onChanged: (_) =>
+                                                _toggleRoomStatus(),
+                                            activeThumbColor: const Color(
+                                              0xFF10B981,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
                               const Divider(height: 24),
-                              // Live Stats Counter
+                              // Live Counters
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
                                 children: [
-                                  _statItem('Available', '$availableCount', const Color(0xFF10B981)),
-                                  _statItem('In-Cart / Held', '$heldCount', const Color(0xFFF59E0B)),
-                                  _statItem('Sold', '$soldCount', theme.colorScheme.primary),
                                   _statItem(
-                                    'Revenue',
-                                    '₹${totalSoldRevenue.toStringAsFixed(0)}',
+                                    'Available',
+                                    '$availableCount',
+                                    const Color(0xFF10B981),
+                                  ),
+                                  _statItem(
+                                    'Held (60s)',
+                                    '$heldCount',
+                                    const Color(0xFFF59E0B),
+                                  ),
+                                  _statItem(
+                                    'Sold',
+                                    '$soldCount',
                                     const Color(0xFF8B5CF6),
+                                  ),
+                                  _statItem(
+                                    'Total Sales',
+                                    '₹${totalSoldRevenue.toStringAsFixed(0)}',
+                                    const Color(0xFF6366F1),
                                   ),
                                 ],
                               ),
@@ -492,31 +735,38 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Action Bar
-                      Row(
+                      // Action Toolbar: Add Product, Seed Demo, End Sale, Order Sheet
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        alignment: WrapAlignment.start,
                         children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              icon: const Icon(Icons.add_shopping_cart),
-                              label: const Text('Add Product'),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                backgroundColor: theme.colorScheme.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.add_shopping_cart, size: 18),
+                            label: const Text('Add Product'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
                               ),
-                              onPressed: _showAddItemDialog,
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
+                            onPressed: _showAddItemDialog,
                           ),
-                          const SizedBox(width: 10),
                           OutlinedButton.icon(
-                            icon: const Icon(Icons.flash_on, color: Color(0xFFF59E0B)),
+                            icon: const Icon(
+                              Icons.flash_on,
+                              color: Color(0xFFF59E0B),
+                              size: 18,
+                            ),
                             label: const Text('Seed 4 Demo Items'),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
+                                horizontal: 14,
                                 vertical: 14,
                               ),
                               shape: RoundedRectangleBorder(
@@ -525,7 +775,25 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                             ),
                             onPressed: _seedDemoItems,
                           ),
-                          const SizedBox(width: 10),
+                          ElevatedButton.icon(
+                            icon: const Icon(
+                              Icons.stop_circle_outlined,
+                              size: 18,
+                            ),
+                            label: const Text('End Live Sale'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: _endSale,
+                          ),
                           IconButton.filledTonal(
                             icon: const Icon(Icons.receipt_long),
                             tooltip: 'Order Sheet',
@@ -536,6 +804,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                   builder: (_) => OrderSheetScreen(
                                     roomId: _room.id!,
                                     roomTitle: _room.title,
+                                    sellerKey: _sellerKey,
                                   ),
                                 ),
                               );
@@ -564,7 +833,11 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                             child: Center(
                               child: Column(
                                 children: [
-                                  Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey),
+                                  Icon(
+                                    Icons.inventory_2_outlined,
+                                    size: 48,
+                                    color: Colors.grey,
+                                  ),
                                   SizedBox(height: 12),
                                   Text(
                                     'No products added yet.',
@@ -584,7 +857,9 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                           ),
                         )
                       else
-                        ..._items.map((item) => _buildSellerItemCard(item, theme)),
+                        ..._items.map(
+                          (item) => _buildSellerItemCard(item, theme),
+                        ),
                     ],
                   ),
                 ),
@@ -643,7 +918,29 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     } else {
       badgeColor = const Color(0xFF8B5CF6);
       badgeText = 'SOLD TO ${item.soldTo?.toUpperCase() ?? "BUYER"}';
-      trailingWidget = const Icon(Icons.check_circle, color: Color(0xFF8B5CF6));
+      trailingWidget = Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (item.paid)
+            Container(
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.green.shade100,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'PAID',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green.shade800,
+                ),
+              ),
+            ),
+          const Icon(Icons.check_circle, color: Color(0xFF8B5CF6)),
+        ],
+      );
     }
 
     final totalPrice = item.price * item.quantity;
@@ -656,20 +953,44 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: badgeColor.withAlpha(30),
+            if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
+              ClipRRect(
                 borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  item.imageUrl!,
+                  width: 48,
+                  height: 48,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: badgeColor.withAlpha(30),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.image_not_supported,
+                      color: badgeColor,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: badgeColor.withAlpha(30),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  item.status == 'sold'
+                      ? Icons.shopping_bag
+                      : (item.status == 'held' ? Icons.lock_clock : Icons.sell),
+                  color: badgeColor,
+                ),
               ),
-              child: Icon(
-                item.status == 'sold'
-                    ? Icons.shopping_bag
-                    : (item.status == 'held' ? Icons.lock_clock : Icons.sell),
-                color: badgeColor,
-              ),
-            ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -697,18 +1018,21 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                         const SizedBox(width: 4),
                         Text(
                           '(₹${item.price.toStringAsFixed(0)}/ea)',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
                       ],
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: badgeColor.withAlpha(35),
-                          borderRadius: BorderRadius.circular(6),
+                          color: badgeColor.withAlpha(25),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           badgeText,

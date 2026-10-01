@@ -6,11 +6,13 @@ import '../client.dart';
 class OrderSheetScreen extends StatefulWidget {
   final int roomId;
   final String roomTitle;
+  final String sellerKey;
 
   const OrderSheetScreen({
     super.key,
     required this.roomId,
     required this.roomTitle,
+    required this.sellerKey,
   });
 
   @override
@@ -35,7 +37,10 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
     });
 
     try {
-      final sheet = await client.room.getOrderSheet(widget.roomId);
+      final sheet = await client.room.getOrderSheet(
+        widget.roomId,
+        widget.sellerKey,
+      );
       setState(() {
         _orderSheet = sheet;
         _isLoading = false;
@@ -48,6 +53,51 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
     }
   }
 
+  Future<void> _togglePaid(Item item) async {
+    try {
+      final updated = await client.room.markPaid(
+        item.id!,
+        widget.sellerKey,
+        !item.paid,
+      );
+
+      setState(() {
+        if (_orderSheet != null) {
+          for (final buyer in _orderSheet!.buyers) {
+            final idx = buyer.items.indexWhere((i) => i.id == updated.id);
+            if (idx != -1) {
+              buyer.items[idx] = updated;
+            }
+          }
+          // Recalculate paid and unpaid sums
+          double paidSum = 0;
+          double unpaidSum = 0;
+          for (final buyer in _orderSheet!.buyers) {
+            for (final i in buyer.items) {
+              final t = i.price * i.quantity;
+              if (i.paid) {
+                paidSum += t;
+              } else {
+                unpaidSum += t;
+              }
+            }
+          }
+          _orderSheet!.totalPaid = paidSum;
+          _orderSheet!.totalUnpaid = unpaidSum;
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update paid status: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   String _generateWhatsAppSummary(OrderSheet sheet) {
     final buffer = StringBuffer();
     buffer.writeln('🎉 *Order Summary: ${sheet.roomTitle}*');
@@ -56,6 +106,11 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
       'Items Sold: ${sheet.totalItemsSold} of ${sheet.totalItems}',
     );
     buffer.writeln('Grand Total: ₹${sheet.grandTotal.toStringAsFixed(0)}');
+    final paidVal = sheet.totalPaid ?? 0.0;
+    final unpaidVal = sheet.totalUnpaid ?? sheet.grandTotal;
+    buffer.writeln(
+      'Paid: ₹${paidVal.toStringAsFixed(0)} | Unpaid: ₹${unpaidVal.toStringAsFixed(0)}',
+    );
     buffer.writeln('-----------------------------------');
 
     for (final buyer in sheet.buyers) {
@@ -68,7 +123,10 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
       for (final item in buyer.items) {
         final qtyStr = item.quantity > 1 ? ' (x${item.quantity})' : '';
         final lineTotal = item.price * item.quantity;
-        buffer.writeln('  • ${item.name}$qtyStr - ₹${lineTotal.toStringAsFixed(0)}');
+        final paidTag = item.paid ? ' [PAID]' : ' [UNPAID]';
+        buffer.writeln(
+          '  • ${item.name}$qtyStr - ₹${lineTotal.toStringAsFixed(0)}$paidTag',
+        );
       }
       buffer.writeln('  *Subtotal: ₹${buyer.totalAmount.toStringAsFixed(0)}*');
     }
@@ -76,6 +134,28 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
     buffer.writeln();
     buffer.writeln('Generated via ClaimRoom ⚡');
     return buffer.toString();
+  }
+
+  void _copyCsv() {
+    if (_orderSheet == null) return;
+    final buffer = StringBuffer();
+    buffer.writeln('Buyer,Items,Quantity,Total,Paid');
+    for (final buyer in _orderSheet!.buyers) {
+      for (final item in buyer.items) {
+        final itemTotal = (item.price * item.quantity).toStringAsFixed(2);
+        final isPaid = item.paid ? 'Paid' : 'Unpaid';
+        final bName = buyer.buyerName.replaceAll('"', '""');
+        final iName = item.name.replaceAll('"', '""');
+        buffer.writeln('"$bName","$iName",${item.quantity},$itemTotal,$isPaid');
+      }
+    }
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Order sheet copied as CSV to clipboard!'),
+        backgroundColor: Color(0xFF10B981),
+      ),
+    );
   }
 
   void _copyToClipboard(String text) {
@@ -131,6 +211,8 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
     }
 
     final sheet = _orderSheet!;
+    final totalPaid = sheet.totalPaid ?? 0.0;
+    final totalUnpaid = sheet.totalUnpaid ?? sheet.grandTotal;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -168,7 +250,7 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                                 'Seller: ${sheet.sellerName}',
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: theme.colorScheme.onPrimaryContainer
-                                      .withOpacity(0.8),
+                                      .withValues(alpha: 0.8),
                                 ),
                               ),
                             ],
@@ -194,31 +276,69 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                         ],
                       ),
                       const Divider(height: 28),
+                      // KPI Metrics Row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _statTile('Sold Items', '${sheet.totalItemsSold}'),
+                          _statTile('Sold Units', '${sheet.totalItemsSold}'),
                           _statTile('Buyers', '${sheet.buyers.length}'),
-                          _statTile('Total Products', '${sheet.totalItems}'),
+                          _statTile(
+                            'Paid Total',
+                            '₹${totalPaid.toStringAsFixed(0)}',
+                            color: Colors.green.shade800,
+                          ),
+                          _statTile(
+                            'Unpaid Total',
+                            '₹${totalUnpaid.toStringAsFixed(0)}',
+                            color: Colors.amber.shade900,
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.share),
-                        label: const Text('Copy WhatsApp Summary'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF25D366),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 14,
+                      const SizedBox(height: 20),
+                      // Export Action Buttons: WhatsApp & CSV
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: [
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.share, size: 18),
+                            label: const Text('Copy WhatsApp Summary'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF25D366),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: () => _copyToClipboard(
+                              _generateWhatsAppSummary(sheet),
+                            ),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                          ElevatedButton.icon(
+                            icon: const Icon(
+                              Icons.table_chart_outlined,
+                              size: 18,
+                            ),
+                            label: const Text('Copy as CSV'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0284C7),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 18,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            onPressed: _copyCsv,
                           ),
-                        ),
-                        onPressed: () =>
-                            _copyToClipboard(_generateWhatsAppSummary(sheet)),
+                        ],
                       ),
                     ],
                   ),
@@ -226,11 +346,20 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
               ),
 
               const SizedBox(height: 24),
-              Text(
-                'Buyers & Claimed Items',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Buyers & Claimed Items',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Tap PAID/UNPAID badge to toggle',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
 
@@ -259,12 +388,16 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
     );
   }
 
-  Widget _statTile(String label, String value) {
+  Widget _statTile(String label, String value, {Color? color}) {
     return Column(
       children: [
         Text(
           value,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
         ),
         const SizedBox(height: 2),
         Text(
@@ -290,8 +423,8 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                 Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withOpacity(
-                        0.15,
+                      backgroundColor: theme.colorScheme.primary.withValues(
+                        alpha: 0.15,
                       ),
                       child: Text(
                         buyer.buyerName.isNotEmpty
@@ -340,9 +473,8 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
             const Divider(height: 20),
             ...buyer.items.map(
               (item) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Text(
@@ -356,6 +488,54 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                         color: Colors.grey.shade800,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Clickable Paid/Unpaid badge
+                    InkWell(
+                      onTap: () => _togglePaid(item),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: item.paid
+                              ? Colors.green.shade100
+                              : Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: item.paid
+                                ? Colors.green.shade600
+                                : Colors.amber.shade700,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              item.paid
+                                  ? Icons.check_circle
+                                  : Icons.hourglass_top,
+                              size: 13,
+                              color: item.paid
+                                  ? Colors.green.shade800
+                                  : Colors.amber.shade900,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              item.paid ? 'PAID' : 'UNPAID',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: item.paid
+                                    ? Colors.green.shade800
+                                    : Colors.amber.shade900,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],

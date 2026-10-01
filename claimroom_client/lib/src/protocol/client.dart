@@ -261,7 +261,7 @@ class EndpointRoom extends _isc.EndpointRef {
   @override
   String get name => 'room';
 
-  /// Seller creates a room and gets back its join code.
+  /// Seller creates a room and gets back its join code and unique sellerKey.
   _ida.Future<_ilfa8wl2.Room> createRoom(
     String title,
     String sellerName,
@@ -275,6 +275,7 @@ class EndpointRoom extends _isc.EndpointRef {
   );
 
   /// Buyers use this to join with a code.
+  /// sellerKey is stripped to ensure buyers never receive it.
   _ida.Future<_ilfa8wl2.Room?> getRoomByCode(String code) =>
       caller.callServerEndpoint<_ilfa8wl2.Room?>(
         'room',
@@ -282,7 +283,20 @@ class EndpointRoom extends _isc.EndpointRef {
         {'code': code},
       );
 
-  /// Get room by its ID.
+  /// Returning sellers use this to verify their sellerKey and rejoin the room.
+  _ida.Future<_ilfa8wl2.Room?> verifySellerKey(
+    String code,
+    String sellerKey,
+  ) => caller.callServerEndpoint<_ilfa8wl2.Room?>(
+    'room',
+    'verifySellerKey',
+    {
+      'code': code,
+      'sellerKey': sellerKey,
+    },
+  );
+
+  /// Get room by its ID. sellerKey is stripped for safety.
   _ida.Future<_ilfa8wl2.Room?> getRoom(int roomId) =>
       caller.callServerEndpoint<_ilfa8wl2.Room?>(
         'room',
@@ -290,41 +304,83 @@ class EndpointRoom extends _isc.EndpointRef {
         {'roomId': roomId},
       );
 
-  /// Seller can open or close claiming in the room.
+  /// Seller can open or close claiming in the room. Requires sellerKey.
   _ida.Future<_ilfa8wl2.Room> toggleRoomStatus(
     int roomId,
+    String sellerKey,
     bool isOpen,
   ) => caller.callServerEndpoint<_ilfa8wl2.Room>(
     'room',
     'toggleRoomStatus',
     {
       'roomId': roomId,
+      'sellerKey': sellerKey,
       'isOpen': isOpen,
     },
   );
 
-  /// Seller adds one product to a room.
+  /// Seller adds one product to a room. Requires sellerKey.
   _ida.Future<_idtbr1ys.Item> addItem(
     int roomId,
+    String sellerKey,
     String name,
     double price,
-    int quantity,
-  ) => caller.callServerEndpoint<_idtbr1ys.Item>(
+    int quantity, {
+    String? imageUrl,
+  }) => caller.callServerEndpoint<_idtbr1ys.Item>(
     'room',
     'addItem',
     {
       'roomId': roomId,
+      'sellerKey': sellerKey,
       'name': name,
       'price': price,
       'quantity': quantity,
+      'imageUrl': imageUrl,
     },
   );
 
-  /// Seller removes an available item.
-  _ida.Future<bool> deleteItem(int itemId) => caller.callServerEndpoint<bool>(
+  /// Seller removes an available item. Requires sellerKey.
+  /// Wrapped in a transaction with LockMode.forUpdate to prevent race conditions.
+  _ida.Future<bool> deleteItem(
+    int itemId,
+    String sellerKey,
+  ) => caller.callServerEndpoint<bool>(
     'room',
     'deleteItem',
-    {'itemId': itemId},
+    {
+      'itemId': itemId,
+      'sellerKey': sellerKey,
+    },
+  );
+
+  /// Seller marks an item as paid/unpaid in the order sheet. Requires sellerKey.
+  _ida.Future<_idtbr1ys.Item> markPaid(
+    int itemId,
+    String sellerKey,
+    bool paid,
+  ) => caller.callServerEndpoint<_idtbr1ys.Item>(
+    'room',
+    'markPaid',
+    {
+      'itemId': itemId,
+      'sellerKey': sellerKey,
+      'paid': paid,
+    },
+  );
+
+  /// Seller ends the live sale: closes the room, automatically releases any
+  /// unconfirmed holds, and broadcasts sale_ended. Requires sellerKey.
+  _ida.Future<_ilfa8wl2.Room> endSale(
+    int roomId,
+    String sellerKey,
+  ) => caller.callServerEndpoint<_ilfa8wl2.Room>(
+    'room',
+    'endSale',
+    {
+      'roomId': roomId,
+      'sellerKey': sellerKey,
+    },
   );
 
   /// Everyone in the room reads the current items.
@@ -337,7 +393,7 @@ class EndpointRoom extends _isc.EndpointRef {
 
   /// Real-time event stream for the room.
   /// Clients subscribe to this stream to receive instant updates when
-  /// items are added, claimed, held, confirmed, or released.
+  /// items are added, claimed, held, confirmed, released, or paid.
   _ida.Stream<_i0ir7zxv.RoomEvent> streamRoom(int roomId) =>
       caller.callStreamingServerEndpoint<
         _ida.Stream<_i0ir7zxv.RoomEvent>,
@@ -353,6 +409,8 @@ class EndpointRoom extends _isc.EndpointRef {
   /// Uses a database transaction with LockMode.forUpdate to eliminate race conditions.
   /// If two buyers claim simultaneously, PostgreSQL row-level locks ensure only
   /// one succeeds.
+  /// Expired holds are treated as available and reset automatically.
+  /// Enforces a maximum of 3 simultaneously active holds per buyer name in this room.
   _ida.Future<_i64ozq20.ClaimResult> claimItem(
     int itemId,
     String buyerName,
@@ -394,14 +452,21 @@ class EndpointRoom extends _isc.EndpointRef {
     },
   );
 
-  /// Generates the complete order sheet for the seller.
+  /// Generates the complete order sheet for the seller. Requires sellerKey.
   /// Aggregates all confirmed (sold) items grouped by buyer name.
-  _ida.Future<_i9f5dsxj.OrderSheet> getOrderSheet(int roomId) =>
-      caller.callServerEndpoint<_i9f5dsxj.OrderSheet>(
-        'room',
-        'getOrderSheet',
-        {'roomId': roomId},
-      );
+  /// Quantity math: price is per unit, total = price * quantity.
+  /// Computes grandTotal, totalPaid, and totalUnpaid.
+  _ida.Future<_i9f5dsxj.OrderSheet> getOrderSheet(
+    int roomId,
+    String sellerKey,
+  ) => caller.callServerEndpoint<_i9f5dsxj.OrderSheet>(
+    'room',
+    'getOrderSheet',
+    {
+      'roomId': roomId,
+      'sellerKey': sellerKey,
+    },
+  );
 }
 
 /// This is an example endpoint that returns a greeting message through

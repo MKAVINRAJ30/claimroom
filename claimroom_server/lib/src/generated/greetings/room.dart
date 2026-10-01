@@ -18,6 +18,7 @@ abstract class Room implements _is.TableRow<int?>, _is.ProtocolSerialization {
     required this.code,
     required this.title,
     required this.sellerName,
+    this.sellerKey,
     required this.isOpen,
     required this.createdAt,
   });
@@ -27,6 +28,7 @@ abstract class Room implements _is.TableRow<int?>, _is.ProtocolSerialization {
     required String code,
     required String title,
     required String sellerName,
+    String? sellerKey,
     required bool isOpen,
     required DateTime createdAt,
   }) = _RoomImpl;
@@ -37,6 +39,7 @@ abstract class Room implements _is.TableRow<int?>, _is.ProtocolSerialization {
       code: jsonSerialization['code'] as String,
       title: jsonSerialization['title'] as String,
       sellerName: jsonSerialization['sellerName'] as String,
+      sellerKey: jsonSerialization['sellerKey'] as String?,
       isOpen: _is.BoolJsonExtension.fromJson(jsonSerialization['isOpen']),
       createdAt: _is.DateTimeJsonExtension.fromJson(
         jsonSerialization['createdAt'],
@@ -57,6 +60,8 @@ abstract class Room implements _is.TableRow<int?>, _is.ProtocolSerialization {
 
   String sellerName;
 
+  String? sellerKey;
+
   bool isOpen;
 
   DateTime createdAt;
@@ -72,6 +77,7 @@ abstract class Room implements _is.TableRow<int?>, _is.ProtocolSerialization {
     String? code,
     String? title,
     String? sellerName,
+    String? sellerKey,
     bool? isOpen,
     DateTime? createdAt,
   });
@@ -83,6 +89,7 @@ abstract class Room implements _is.TableRow<int?>, _is.ProtocolSerialization {
       'code': code,
       'title': title,
       'sellerName': sellerName,
+      if (sellerKey != null) 'sellerKey': sellerKey,
       'isOpen': isOpen,
       'createdAt': createdAt.toJson(),
     };
@@ -96,6 +103,7 @@ abstract class Room implements _is.TableRow<int?>, _is.ProtocolSerialization {
       'code': code,
       'title': title,
       'sellerName': sellerName,
+      if (sellerKey != null) 'sellerKey': sellerKey,
       'isOpen': isOpen,
       'createdAt': createdAt.toJson(),
     };
@@ -137,6 +145,7 @@ class _RoomImpl extends Room {
     required String code,
     required String title,
     required String sellerName,
+    String? sellerKey,
     required bool isOpen,
     required DateTime createdAt,
   }) : super._(
@@ -144,6 +153,7 @@ class _RoomImpl extends Room {
          code: code,
          title: title,
          sellerName: sellerName,
+         sellerKey: sellerKey,
          isOpen: isOpen,
          createdAt: createdAt,
        );
@@ -157,6 +167,7 @@ class _RoomImpl extends Room {
     String? code,
     String? title,
     String? sellerName,
+    Object? sellerKey = _Undefined,
     bool? isOpen,
     DateTime? createdAt,
   }) {
@@ -165,6 +176,7 @@ class _RoomImpl extends Room {
       code: code ?? this.code,
       title: title ?? this.title,
       sellerName: sellerName ?? this.sellerName,
+      sellerKey: sellerKey is String? ? sellerKey : this.sellerKey,
       isOpen: isOpen ?? this.isOpen,
       createdAt: createdAt ?? this.createdAt,
     );
@@ -186,6 +198,11 @@ class RoomUpdateTable extends _is.UpdateTable<RoomTable> {
 
   _is.ColumnValue<String, String> sellerName(String value) => _is.ColumnValue(
     table.sellerName,
+    value,
+  );
+
+  _is.ColumnValue<String, String> sellerKey(String? value) => _is.ColumnValue(
+    table.sellerKey,
     value,
   );
 
@@ -216,6 +233,10 @@ class RoomTable extends _is.Table<int?> {
       'sellerName',
       this,
     );
+    sellerKey = _is.ColumnString(
+      'sellerKey',
+      this,
+    );
     isOpen = _is.ColumnBool(
       'isOpen',
       this,
@@ -234,6 +255,8 @@ class RoomTable extends _is.Table<int?> {
 
   late final _is.ColumnString sellerName;
 
+  late final _is.ColumnString sellerKey;
+
   late final _is.ColumnBool isOpen;
 
   late final _is.ColumnDateTime createdAt;
@@ -244,6 +267,7 @@ class RoomTable extends _is.Table<int?> {
     code,
     title,
     sellerName,
+    sellerKey,
     isOpen,
     createdAt,
   ];

@@ -600,6 +600,41 @@ class _RoomEndpoint {
     });
   }
 
+  _ida.Future<_itoar3qu.Room?> verifySellerKey(
+    _ist.TestSessionBuilder sessionBuilder,
+    String code,
+    String sellerKey,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'verifySellerKey',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'verifySellerKey',
+          parameters: _ist.testObjectToJson({
+            'code': code,
+            'sellerKey': sellerKey,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_itoar3qu.Room?>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
   _ida.Future<_itoar3qu.Room?> getRoom(
     _ist.TestSessionBuilder sessionBuilder,
     int roomId,
@@ -634,6 +669,7 @@ class _RoomEndpoint {
   _ida.Future<_itoar3qu.Room> toggleRoomStatus(
     _ist.TestSessionBuilder sessionBuilder,
     int roomId,
+    String sellerKey,
     bool isOpen,
   ) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
@@ -649,6 +685,7 @@ class _RoomEndpoint {
           methodName: 'toggleRoomStatus',
           parameters: _ist.testObjectToJson({
             'roomId': roomId,
+            'sellerKey': sellerKey,
             'isOpen': isOpen,
           }),
           serializationManager: _serializationManager,
@@ -669,10 +706,12 @@ class _RoomEndpoint {
   _ida.Future<_if796r8c.Item> addItem(
     _ist.TestSessionBuilder sessionBuilder,
     int roomId,
+    String sellerKey,
     String name,
     double price,
-    int quantity,
-  ) async {
+    int quantity, {
+    String? imageUrl,
+  }) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
           (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
@@ -686,9 +725,11 @@ class _RoomEndpoint {
           methodName: 'addItem',
           parameters: _ist.testObjectToJson({
             'roomId': roomId,
+            'sellerKey': sellerKey,
             'name': name,
             'price': price,
             'quantity': quantity,
+            'imageUrl': imageUrl,
           }),
           serializationManager: _serializationManager,
         );
@@ -708,6 +749,7 @@ class _RoomEndpoint {
   _ida.Future<bool> deleteItem(
     _ist.TestSessionBuilder sessionBuilder,
     int itemId,
+    String sellerKey,
   ) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
@@ -720,7 +762,10 @@ class _RoomEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'room',
           methodName: 'deleteItem',
-          parameters: _ist.testObjectToJson({'itemId': itemId}),
+          parameters: _ist.testObjectToJson({
+            'itemId': itemId,
+            'sellerKey': sellerKey,
+          }),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
@@ -729,6 +774,78 @@ class _RoomEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<bool>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_if796r8c.Item> markPaid(
+    _ist.TestSessionBuilder sessionBuilder,
+    int itemId,
+    String sellerKey,
+    bool paid,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'markPaid',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'markPaid',
+          parameters: _ist.testObjectToJson({
+            'itemId': itemId,
+            'sellerKey': sellerKey,
+            'paid': paid,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_if796r8c.Item>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_itoar3qu.Room> endSale(
+    _ist.TestSessionBuilder sessionBuilder,
+    int roomId,
+    String sellerKey,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'endSale',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'endSale',
+          parameters: _ist.testObjectToJson({
+            'roomId': roomId,
+            'sellerKey': sellerKey,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_itoar3qu.Room>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -909,6 +1026,7 @@ class _RoomEndpoint {
   _ida.Future<_ik1soa64.OrderSheet> getOrderSheet(
     _ist.TestSessionBuilder sessionBuilder,
     int roomId,
+    String sellerKey,
   ) async {
     return _ist.callAwaitableFunctionAndHandleExceptions(() async {
       var _localUniqueSession =
@@ -921,7 +1039,10 @@ class _RoomEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'room',
           methodName: 'getOrderSheet',
-          parameters: _ist.testObjectToJson({'roomId': roomId}),
+          parameters: _ist.testObjectToJson({
+            'roomId': roomId,
+            'sellerKey': sellerKey,
+          }),
           serializationManager: _serializationManager,
         );
         var _localReturnValue =
