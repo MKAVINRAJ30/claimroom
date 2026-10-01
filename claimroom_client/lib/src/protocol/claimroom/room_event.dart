@@ -12,7 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:claimroom_client/src/protocol/protocol.dart' as _i805zd29;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
-import '../greetings/item.dart' as _iz9csdid;
+import '../claimroom/item.dart' as _i5bdkz8n;
 
 abstract class RoomEvent
     implements _isc.SerializableModel, _isc.ProtocolSerialization {
@@ -27,7 +27,7 @@ abstract class RoomEvent
   factory RoomEvent({
     required int roomId,
     required String type,
-    _iz9csdid.Item? item,
+    _i5bdkz8n.Item? item,
     String? message,
     required DateTime timestamp,
   }) = _RoomEventImpl;
@@ -38,7 +38,7 @@ abstract class RoomEvent
       type: jsonSerialization['type'] as String,
       item: jsonSerialization['item'] == null
           ? null
-          : _i805zd29.Protocol().deserialize<_iz9csdid.Item>(
+          : _i805zd29.Protocol().deserialize<_i5bdkz8n.Item>(
               jsonSerialization['item'],
             ),
       message: jsonSerialization['message'] as String?,
@@ -52,7 +52,7 @@ abstract class RoomEvent
 
   String type;
 
-  _iz9csdid.Item? item;
+  _i5bdkz8n.Item? item;
 
   String? message;
 
@@ -64,7 +64,7 @@ abstract class RoomEvent
   RoomEvent copyWith({
     int? roomId,
     String? type,
-    _iz9csdid.Item? item,
+    _i5bdkz8n.Item? item,
     String? message,
     DateTime? timestamp,
   });
@@ -104,7 +104,7 @@ class _RoomEventImpl extends RoomEvent {
   _RoomEventImpl({
     required int roomId,
     required String type,
-    _iz9csdid.Item? item,
+    _i5bdkz8n.Item? item,
     String? message,
     required DateTime timestamp,
   }) : super._(
@@ -129,7 +129,7 @@ class _RoomEventImpl extends RoomEvent {
     return RoomEvent(
       roomId: roomId ?? this.roomId,
       type: type ?? this.type,
-      item: item is _iz9csdid.Item? ? item : this.item?.copyWith(),
+      item: item is _i5bdkz8n.Item? ? item : this.item?.copyWith(),
       message: message is String? ? message : this.message,
       timestamp: timestamp ?? this.timestamp,
     );

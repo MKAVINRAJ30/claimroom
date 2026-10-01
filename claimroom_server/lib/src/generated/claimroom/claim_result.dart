@@ -12,7 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:claimroom_server/src/generated/protocol.dart' as _ix13sr6n;
 import 'package:serverpod/serverpod.dart' as _is;
-import '../greetings/item.dart' as _iz9csdid;
+import '../claimroom/item.dart' as _i5bdkz8n;
 
 abstract class ClaimResult
     implements _is.SerializableModel, _is.ProtocolSerialization {
@@ -25,7 +25,7 @@ abstract class ClaimResult
   factory ClaimResult({
     required bool success,
     required String message,
-    _iz9csdid.Item? item,
+    _i5bdkz8n.Item? item,
   }) = _ClaimResultImpl;
 
   factory ClaimResult.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -34,7 +34,7 @@ abstract class ClaimResult
       message: jsonSerialization['message'] as String,
       item: jsonSerialization['item'] == null
           ? null
-          : _ix13sr6n.Protocol().deserialize<_iz9csdid.Item>(
+          : _ix13sr6n.Protocol().deserialize<_i5bdkz8n.Item>(
               jsonSerialization['item'],
             ),
     );
@@ -44,7 +44,7 @@ abstract class ClaimResult
 
   String message;
 
-  _iz9csdid.Item? item;
+  _i5bdkz8n.Item? item;
 
   /// Returns a shallow copy of this [ClaimResult]
   /// with some or all fields replaced by the given arguments.
@@ -52,7 +52,7 @@ abstract class ClaimResult
   ClaimResult copyWith({
     bool? success,
     String? message,
-    _iz9csdid.Item? item,
+    _i5bdkz8n.Item? item,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -86,7 +86,7 @@ class _ClaimResultImpl extends ClaimResult {
   _ClaimResultImpl({
     required bool success,
     required String message,
-    _iz9csdid.Item? item,
+    _i5bdkz8n.Item? item,
   }) : super._(
          success: success,
          message: message,
@@ -105,7 +105,7 @@ class _ClaimResultImpl extends ClaimResult {
     return ClaimResult(
       success: success ?? this.success,
       message: message ?? this.message,
-      item: item is _iz9csdid.Item? ? item : this.item?.copyWith(),
+      item: item is _i5bdkz8n.Item? ? item : this.item?.copyWith(),
     );
   }
 }

@@ -15,24 +15,20 @@ import 'dart:async' as _ida;
 import 'dart:io' as _idi;
 import 'package:claimroom_server/src/generated/claimroom/claim_result.dart'
     as _iouny0wk;
+import 'package:claimroom_server/src/generated/claimroom/item.dart'
+    as _i24jg4ei;
 import 'package:claimroom_server/src/generated/claimroom/order_sheet.dart'
     as _ik1soa64;
 import 'package:claimroom_server/src/generated/claimroom/report.dart'
     as _iuzslksc;
+import 'package:claimroom_server/src/generated/claimroom/room.dart'
+    as _ih64epdi;
 import 'package:claimroom_server/src/generated/claimroom/room_event.dart'
     as _i2147zem;
 import 'package:claimroom_server/src/generated/future_calls.dart' as _ibfxidep;
 import 'package:claimroom_server/src/generated/future_calls_generated_models/hold_expiry_future_call_expire_hold_model.dart'
     as _i1gj6eet;
-import 'package:claimroom_server/src/generated/greetings/greeting.dart'
-    as _iysqto40;
-import 'package:claimroom_server/src/generated/greetings/item.dart'
-    as _if796r8c;
-import 'package:claimroom_server/src/generated/greetings/room.dart'
-    as _itoar3qu;
 import 'package:serverpod/serverpod.dart' as _is;
-import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
-    as _iacs;
 import 'package:serverpod_test/serverpod_test.dart' as _ist;
 import 'package:claimroom_server/src/generated/protocol.dart';
 import 'package:claimroom_server/src/generated/endpoints.dart';
@@ -169,13 +165,7 @@ void withServerpod(
 class TestEndpoints {
   late final futureCalls = _FutureCalls();
 
-  late final _EmailIdpEndpoint emailIdp;
-
-  late final _JwtRefreshEndpoint jwtRefresh;
-
   late final _RoomEndpoint room;
-
-  late final _GreetingEndpoint greeting;
 }
 
 class _InternalTestEndpoints extends TestEndpoints
@@ -185,19 +175,7 @@ class _InternalTestEndpoints extends TestEndpoints
     _is.SerializationManager serializationManager,
     _is.EndpointDispatch endpoints,
   ) {
-    emailIdp = _EmailIdpEndpoint(
-      endpoints,
-      serializationManager,
-    );
-    jwtRefresh = _JwtRefreshEndpoint(
-      endpoints,
-      serializationManager,
-    );
     room = _RoomEndpoint(
-      endpoints,
-      serializationManager,
-    );
-    greeting = _GreetingEndpoint(
       endpoints,
       serializationManager,
     );
@@ -206,324 +184,6 @@ class _InternalTestEndpoints extends TestEndpoints
 
 class _FutureCalls {
   late final holdExpiry = _HoldExpiryFutureCall();
-}
-
-class _EmailIdpEndpoint {
-  _EmailIdpEndpoint(
-    this._endpointDispatch,
-    this._serializationManager,
-  );
-
-  final _is.EndpointDispatch _endpointDispatch;
-
-  final _is.SerializationManager _serializationManager;
-
-  _ida.Future<_iacs.AuthSuccess> login(
-    _ist.TestSessionBuilder sessionBuilder, {
-    required String email,
-    required String password,
-  }) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'emailIdp',
-            method: 'login',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'emailIdp',
-          methodName: 'login',
-          parameters: _ist.testObjectToJson({
-            'email': email,
-            'password': password,
-          }),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_iacs.AuthSuccess>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<_is.UuidValue> startRegistration(
-    _ist.TestSessionBuilder sessionBuilder, {
-    required String email,
-  }) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'emailIdp',
-            method: 'startRegistration',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'emailIdp',
-          methodName: 'startRegistration',
-          parameters: _ist.testObjectToJson({'email': email}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_is.UuidValue>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<String> verifyRegistrationCode(
-    _ist.TestSessionBuilder sessionBuilder, {
-    required _is.UuidValue accountRequestId,
-    required String verificationCode,
-  }) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'emailIdp',
-            method: 'verifyRegistrationCode',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'emailIdp',
-          methodName: 'verifyRegistrationCode',
-          parameters: _ist.testObjectToJson({
-            'accountRequestId': accountRequestId,
-            'verificationCode': verificationCode,
-          }),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<String>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<_iacs.AuthSuccess> finishRegistration(
-    _ist.TestSessionBuilder sessionBuilder, {
-    required String registrationToken,
-    required String password,
-  }) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'emailIdp',
-            method: 'finishRegistration',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'emailIdp',
-          methodName: 'finishRegistration',
-          parameters: _ist.testObjectToJson({
-            'registrationToken': registrationToken,
-            'password': password,
-          }),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_iacs.AuthSuccess>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<_is.UuidValue> startPasswordReset(
-    _ist.TestSessionBuilder sessionBuilder, {
-    required String email,
-  }) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'emailIdp',
-            method: 'startPasswordReset',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'emailIdp',
-          methodName: 'startPasswordReset',
-          parameters: _ist.testObjectToJson({'email': email}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_is.UuidValue>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<String> verifyPasswordResetCode(
-    _ist.TestSessionBuilder sessionBuilder, {
-    required _is.UuidValue passwordResetRequestId,
-    required String verificationCode,
-  }) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'emailIdp',
-            method: 'verifyPasswordResetCode',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'emailIdp',
-          methodName: 'verifyPasswordResetCode',
-          parameters: _ist.testObjectToJson({
-            'passwordResetRequestId': passwordResetRequestId,
-            'verificationCode': verificationCode,
-          }),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<String>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<void> finishPasswordReset(
-    _ist.TestSessionBuilder sessionBuilder, {
-    required String finishPasswordResetToken,
-    required String newPassword,
-  }) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'emailIdp',
-            method: 'finishPasswordReset',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'emailIdp',
-          methodName: 'finishPasswordReset',
-          parameters: _ist.testObjectToJson({
-            'finishPasswordResetToken': finishPasswordResetToken,
-            'newPassword': newPassword,
-          }),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<void>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-
-  _ida.Future<bool> hasAccount(_ist.TestSessionBuilder sessionBuilder) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'emailIdp',
-            method: 'hasAccount',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'emailIdp',
-          methodName: 'hasAccount',
-          parameters: _ist.testObjectToJson({}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<bool>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-}
-
-class _JwtRefreshEndpoint {
-  _JwtRefreshEndpoint(
-    this._endpointDispatch,
-    this._serializationManager,
-  );
-
-  final _is.EndpointDispatch _endpointDispatch;
-
-  final _is.SerializationManager _serializationManager;
-
-  _ida.Future<_iacs.AuthSuccess> refreshAccessToken(
-    _ist.TestSessionBuilder sessionBuilder, {
-    String? refreshToken,
-  }) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'jwtRefresh',
-            method: 'refreshAccessToken',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'jwtRefresh',
-          methodName: 'refreshAccessToken',
-          parameters: _ist.testObjectToJson({'refreshToken': refreshToken}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_iacs.AuthSuccess>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
 }
 
 class _RoomEndpoint {
@@ -536,7 +196,7 @@ class _RoomEndpoint {
 
   final _is.SerializationManager _serializationManager;
 
-  _ida.Future<_itoar3qu.Room> createRoom(
+  _ida.Future<_ih64epdi.Room> createRoom(
     _ist.TestSessionBuilder sessionBuilder,
     String title,
     String sellerName,
@@ -563,7 +223,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_itoar3qu.Room>);
+                as _ida.Future<_ih64epdi.Room>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -571,7 +231,7 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<_itoar3qu.Room?> getRoomByCode(
+  _ida.Future<_ih64epdi.Room?> getRoomByCode(
     _ist.TestSessionBuilder sessionBuilder,
     String code,
   ) async {
@@ -594,7 +254,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_itoar3qu.Room?>);
+                as _ida.Future<_ih64epdi.Room?>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -602,7 +262,7 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<_itoar3qu.Room?> verifySellerKey(
+  _ida.Future<_ih64epdi.Room?> verifySellerKey(
     _ist.TestSessionBuilder sessionBuilder,
     String code,
     String sellerKey,
@@ -629,7 +289,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_itoar3qu.Room?>);
+                as _ida.Future<_ih64epdi.Room?>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -637,7 +297,7 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<_itoar3qu.Room?> getRoom(
+  _ida.Future<_ih64epdi.Room?> getRoom(
     _ist.TestSessionBuilder sessionBuilder,
     int roomId,
   ) async {
@@ -660,7 +320,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_itoar3qu.Room?>);
+                as _ida.Future<_ih64epdi.Room?>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -668,7 +328,7 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<_itoar3qu.Room> toggleRoomStatus(
+  _ida.Future<_ih64epdi.Room> toggleRoomStatus(
     _ist.TestSessionBuilder sessionBuilder,
     int roomId,
     String sellerKey,
@@ -697,7 +357,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_itoar3qu.Room>);
+                as _ida.Future<_ih64epdi.Room>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -705,7 +365,7 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<_if796r8c.Item> addItem(
+  _ida.Future<_i24jg4ei.Item> addItem(
     _ist.TestSessionBuilder sessionBuilder,
     int roomId,
     String sellerKey,
@@ -740,7 +400,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_if796r8c.Item>);
+                as _ida.Future<_i24jg4ei.Item>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -783,7 +443,7 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<_if796r8c.Item> markPaid(
+  _ida.Future<_i24jg4ei.Item> markPaid(
     _ist.TestSessionBuilder sessionBuilder,
     int itemId,
     String sellerKey,
@@ -812,7 +472,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_if796r8c.Item>);
+                as _ida.Future<_i24jg4ei.Item>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -820,7 +480,7 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<_itoar3qu.Room> endSale(
+  _ida.Future<_ih64epdi.Room> endSale(
     _ist.TestSessionBuilder sessionBuilder,
     int roomId,
     String sellerKey,
@@ -847,7 +507,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_itoar3qu.Room>);
+                as _ida.Future<_ih64epdi.Room>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -855,7 +515,7 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<List<_if796r8c.Item>> listItems(
+  _ida.Future<List<_i24jg4ei.Item>> listItems(
     _ist.TestSessionBuilder sessionBuilder,
     int roomId,
   ) async {
@@ -878,7 +538,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<List<_if796r8c.Item>>);
+                as _ida.Future<List<_i24jg4ei.Item>>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -1027,7 +687,7 @@ class _RoomEndpoint {
     });
   }
 
-  _ida.Future<_if796r8c.Item> releaseHoldAsSeller(
+  _ida.Future<_i24jg4ei.Item> releaseHoldAsSeller(
     _ist.TestSessionBuilder sessionBuilder,
     int itemId,
     String sellerKey,
@@ -1054,7 +714,7 @@ class _RoomEndpoint {
                   _localUniqueSession,
                   _localCallContext.arguments,
                 )
-                as _ida.Future<_if796r8c.Item>);
+                as _ida.Future<_i24jg4ei.Item>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();
@@ -1125,48 +785,6 @@ class _RoomEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<_iuzslksc.Report>);
-        return _localReturnValue;
-      } finally {
-        await _localUniqueSession.close();
-      }
-    });
-  }
-}
-
-class _GreetingEndpoint {
-  _GreetingEndpoint(
-    this._endpointDispatch,
-    this._serializationManager,
-  );
-
-  final _is.EndpointDispatch _endpointDispatch;
-
-  final _is.SerializationManager _serializationManager;
-
-  _ida.Future<_iysqto40.Greeting> hello(
-    _ist.TestSessionBuilder sessionBuilder,
-    String name,
-  ) async {
-    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
-      var _localUniqueSession =
-          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
-            endpoint: 'greeting',
-            method: 'hello',
-          );
-      try {
-        var _localCallContext = await _endpointDispatch.getMethodCallContext(
-          createSessionCallback: (_) => _localUniqueSession,
-          endpointPath: 'greeting',
-          methodName: 'hello',
-          parameters: _ist.testObjectToJson({'name': name}),
-          serializationManager: _serializationManager,
-        );
-        var _localReturnValue =
-            await (_localCallContext.method.call(
-                  _localUniqueSession,
-                  _localCallContext.arguments,
-                )
-                as _ida.Future<_iysqto40.Greeting>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();

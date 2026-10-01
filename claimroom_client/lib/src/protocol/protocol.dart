@@ -11,7 +11,7 @@
 // ignore_for_file: dead_code, unnecessary_type_check
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:claimroom_client/src/protocol/greetings/item.dart' as _idtbr1ys;
+import 'package:claimroom_client/src/protocol/claimroom/item.dart' as _il26i9sg;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
@@ -19,20 +19,18 @@ import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'claimroom/buyer_order_summary.dart' as _it96tugq;
 import 'claimroom/claim_result.dart' as _in969j7u;
+import 'claimroom/item.dart' as _idgc2c1i;
 import 'claimroom/order_sheet.dart' as _ihpac1yz;
 import 'claimroom/report.dart' as _ivdf4l49;
+import 'claimroom/room.dart' as _iekd0e7s;
 import 'claimroom/room_event.dart' as _ii05qs2r;
-import 'greetings/greeting.dart' as _izw8z7ou;
-import 'greetings/item.dart' as _i1g1fq7w;
-import 'greetings/room.dart' as _ihwvtgor;
 export 'claimroom/buyer_order_summary.dart';
 export 'claimroom/claim_result.dart';
+export 'claimroom/item.dart';
 export 'claimroom/order_sheet.dart';
 export 'claimroom/report.dart';
+export 'claimroom/room.dart';
 export 'claimroom/room_event.dart';
-export 'greetings/greeting.dart';
-export 'greetings/item.dart';
-export 'greetings/room.dart';
 export 'client.dart';
 
 class Protocol extends _isc.SerializationManager {
@@ -75,23 +73,20 @@ class Protocol extends _isc.SerializationManager {
     if (t == _in969j7u.ClaimResult) {
       return _in969j7u.ClaimResult.fromJson(data) as T;
     }
+    if (t == _idgc2c1i.Item) {
+      return _idgc2c1i.Item.fromJson(data) as T;
+    }
     if (t == _ihpac1yz.OrderSheet) {
       return _ihpac1yz.OrderSheet.fromJson(data) as T;
     }
     if (t == _ivdf4l49.Report) {
       return _ivdf4l49.Report.fromJson(data) as T;
     }
+    if (t == _iekd0e7s.Room) {
+      return _iekd0e7s.Room.fromJson(data) as T;
+    }
     if (t == _ii05qs2r.RoomEvent) {
       return _ii05qs2r.RoomEvent.fromJson(data) as T;
-    }
-    if (t == _izw8z7ou.Greeting) {
-      return _izw8z7ou.Greeting.fromJson(data) as T;
-    }
-    if (t == _i1g1fq7w.Item) {
-      return _i1g1fq7w.Item.fromJson(data) as T;
-    }
-    if (t == _ihwvtgor.Room) {
-      return _ihwvtgor.Room.fromJson(data) as T;
     }
     if (t == _isc.getType<_it96tugq.BuyerOrderSummary?>()) {
       return (data != null ? _it96tugq.BuyerOrderSummary.fromJson(data) : null)
@@ -100,26 +95,23 @@ class Protocol extends _isc.SerializationManager {
     if (t == _isc.getType<_in969j7u.ClaimResult?>()) {
       return (data != null ? _in969j7u.ClaimResult.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_idgc2c1i.Item?>()) {
+      return (data != null ? _idgc2c1i.Item.fromJson(data) : null) as T;
+    }
     if (t == _isc.getType<_ihpac1yz.OrderSheet?>()) {
       return (data != null ? _ihpac1yz.OrderSheet.fromJson(data) : null) as T;
     }
     if (t == _isc.getType<_ivdf4l49.Report?>()) {
       return (data != null ? _ivdf4l49.Report.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_iekd0e7s.Room?>()) {
+      return (data != null ? _iekd0e7s.Room.fromJson(data) : null) as T;
+    }
     if (t == _isc.getType<_ii05qs2r.RoomEvent?>()) {
       return (data != null ? _ii05qs2r.RoomEvent.fromJson(data) : null) as T;
     }
-    if (t == _isc.getType<_izw8z7ou.Greeting?>()) {
-      return (data != null ? _izw8z7ou.Greeting.fromJson(data) : null) as T;
-    }
-    if (t == _isc.getType<_i1g1fq7w.Item?>()) {
-      return (data != null ? _i1g1fq7w.Item.fromJson(data) : null) as T;
-    }
-    if (t == _isc.getType<_ihwvtgor.Room?>()) {
-      return (data != null ? _ihwvtgor.Room.fromJson(data) : null) as T;
-    }
-    if (t == List<_i1g1fq7w.Item>) {
-      return (data as List).map((e) => deserialize<_i1g1fq7w.Item>(e)).toList()
+    if (t == List<_idgc2c1i.Item>) {
+      return (data as List).map((e) => deserialize<_idgc2c1i.Item>(e)).toList()
           as T;
     }
     if (t == List<_it96tugq.BuyerOrderSummary>) {
@@ -128,8 +120,8 @@ class Protocol extends _isc.SerializationManager {
               .toList()
           as T;
     }
-    if (t == List<_idtbr1ys.Item>) {
-      return (data as List).map((e) => deserialize<_idtbr1ys.Item>(e)).toList()
+    if (t == List<_il26i9sg.Item>) {
+      return (data as List).map((e) => deserialize<_il26i9sg.Item>(e)).toList()
           as T;
     }
     try {
@@ -145,12 +137,11 @@ class Protocol extends _isc.SerializationManager {
     return switch (type) {
       _it96tugq.BuyerOrderSummary => 'BuyerOrderSummary',
       _in969j7u.ClaimResult => 'ClaimResult',
+      _idgc2c1i.Item => 'Item',
       _ihpac1yz.OrderSheet => 'OrderSheet',
       _ivdf4l49.Report => 'Report',
+      _iekd0e7s.Room => 'Room',
       _ii05qs2r.RoomEvent => 'RoomEvent',
-      _izw8z7ou.Greeting => 'Greeting',
-      _i1g1fq7w.Item => 'Item',
-      _ihwvtgor.Room => 'Room',
       _ => null,
     };
   }
@@ -169,18 +160,16 @@ class Protocol extends _isc.SerializationManager {
         return 'BuyerOrderSummary';
       case _in969j7u.ClaimResult():
         return 'ClaimResult';
+      case _idgc2c1i.Item():
+        return 'Item';
       case _ihpac1yz.OrderSheet():
         return 'OrderSheet';
       case _ivdf4l49.Report():
         return 'Report';
+      case _iekd0e7s.Room():
+        return 'Room';
       case _ii05qs2r.RoomEvent():
         return 'RoomEvent';
-      case _izw8z7ou.Greeting():
-        return 'Greeting';
-      case _i1g1fq7w.Item():
-        return 'Item';
-      case _ihwvtgor.Room():
-        return 'Room';
     }
     className = _iaic.Protocol().getClassNameForObject(data);
     if (className != null) {
@@ -209,23 +198,20 @@ class Protocol extends _isc.SerializationManager {
     if (dataClassName == 'ClaimResult') {
       return deserialize<_in969j7u.ClaimResult>(data['data']);
     }
+    if (dataClassName == 'Item') {
+      return deserialize<_idgc2c1i.Item>(data['data']);
+    }
     if (dataClassName == 'OrderSheet') {
       return deserialize<_ihpac1yz.OrderSheet>(data['data']);
     }
     if (dataClassName == 'Report') {
       return deserialize<_ivdf4l49.Report>(data['data']);
     }
+    if (dataClassName == 'Room') {
+      return deserialize<_iekd0e7s.Room>(data['data']);
+    }
     if (dataClassName == 'RoomEvent') {
       return deserialize<_ii05qs2r.RoomEvent>(data['data']);
-    }
-    if (dataClassName == 'Greeting') {
-      return deserialize<_izw8z7ou.Greeting>(data['data']);
-    }
-    if (dataClassName == 'Item') {
-      return deserialize<_i1g1fq7w.Item>(data['data']);
-    }
-    if (dataClassName == 'Room') {
-      return deserialize<_ihwvtgor.Room>(data['data']);
     }
     if (dataClassName.startsWith('serverpod_auth_idp.')) {
       data['className'] = dataClassName.substring(19);

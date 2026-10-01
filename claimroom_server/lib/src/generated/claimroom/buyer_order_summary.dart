@@ -12,7 +12,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:claimroom_server/src/generated/protocol.dart' as _ix13sr6n;
 import 'package:serverpod/serverpod.dart' as _is;
-import '../greetings/item.dart' as _iz9csdid;
+import '../claimroom/item.dart' as _i5bdkz8n;
 
 abstract class BuyerOrderSummary
     implements _is.SerializableModel, _is.ProtocolSerialization {
@@ -27,7 +27,7 @@ abstract class BuyerOrderSummary
   factory BuyerOrderSummary({
     required String buyerName,
     String? buyerContact,
-    required List<_iz9csdid.Item> items,
+    required List<_i5bdkz8n.Item> items,
     required double totalAmount,
     required int itemCount,
   }) = _BuyerOrderSummaryImpl;
@@ -36,7 +36,7 @@ abstract class BuyerOrderSummary
     return BuyerOrderSummary(
       buyerName: jsonSerialization['buyerName'] as String,
       buyerContact: jsonSerialization['buyerContact'] as String?,
-      items: _ix13sr6n.Protocol().deserialize<List<_iz9csdid.Item>>(
+      items: _ix13sr6n.Protocol().deserialize<List<_i5bdkz8n.Item>>(
         jsonSerialization['items'],
       ),
       totalAmount: (jsonSerialization['totalAmount'] as num).toDouble(),
@@ -48,7 +48,7 @@ abstract class BuyerOrderSummary
 
   String? buyerContact;
 
-  List<_iz9csdid.Item> items;
+  List<_i5bdkz8n.Item> items;
 
   double totalAmount;
 
@@ -60,7 +60,7 @@ abstract class BuyerOrderSummary
   BuyerOrderSummary copyWith({
     String? buyerName,
     String? buyerContact,
-    List<_iz9csdid.Item>? items,
+    List<_i5bdkz8n.Item>? items,
     double? totalAmount,
     int? itemCount,
   });
@@ -100,7 +100,7 @@ class _BuyerOrderSummaryImpl extends BuyerOrderSummary {
   _BuyerOrderSummaryImpl({
     required String buyerName,
     String? buyerContact,
-    required List<_iz9csdid.Item> items,
+    required List<_i5bdkz8n.Item> items,
     required double totalAmount,
     required int itemCount,
   }) : super._(
@@ -118,7 +118,7 @@ class _BuyerOrderSummaryImpl extends BuyerOrderSummary {
   BuyerOrderSummary copyWith({
     String? buyerName,
     Object? buyerContact = _Undefined,
-    List<_iz9csdid.Item>? items,
+    List<_i5bdkz8n.Item>? items,
     double? totalAmount,
     int? itemCount,
   }) {
