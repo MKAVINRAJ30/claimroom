@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:serverpod/serverpod.dart';
 import '../generated/future_calls.dart';
 import '../generated/protocol.dart';
+import 'sanitizer.dart';
 
 class RoomEndpoint extends Endpoint {
   static const _letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -174,7 +175,7 @@ class RoomEndpoint extends Endpoint {
       RoomEvent(
         roomId: roomId,
         type: 'item_added',
-        item: inserted,
+        item: sanitizeItem(inserted),
         message: 'New item added: ${inserted.name}',
         timestamp: DateTime.now().toUtc(),
       ),
@@ -232,7 +233,7 @@ class RoomEndpoint extends Endpoint {
         RoomEvent(
           roomId: targetRoomId!,
           type: 'item_deleted',
-          item: deletedItem,
+          item: sanitizeItem(deletedItem!),
           message: 'Item removed: ${deletedItem!.name}',
           timestamp: DateTime.now().toUtc(),
         ),
@@ -287,7 +288,7 @@ class RoomEndpoint extends Endpoint {
         RoomEvent(
           roomId: updatedItem!.roomId,
           type: 'item_paid',
-          item: updatedItem,
+          item: sanitizeItem(updatedItem!),
           message:
               '${updatedItem!.name} marked as ${paid ? "paid" : "unpaid"}.',
           timestamp: DateTime.now().toUtc(),
@@ -344,12 +345,14 @@ class RoomEndpoint extends Endpoint {
   }
 
   /// Everyone in the room reads the current items.
+  /// Private contact fields are sanitized.
   Future<List<Item>> listItems(Session session, int roomId) async {
-    return await Item.db.find(
+    final items = await Item.db.find(
       session,
       where: (t) => t.roomId.equals(roomId),
       orderBy: (t) => t.id,
     );
+    return items.map(sanitizeItem).toList();
   }
 
   /// Real-time event stream for the room.
@@ -404,7 +407,7 @@ class RoomEndpoint extends Endpoint {
         return ClaimResult(
           success: false,
           message: 'The room is currently closed for claims.',
-          item: item,
+          item: sanitizeItem(item),
         );
       }
 
@@ -425,7 +428,7 @@ class RoomEndpoint extends Endpoint {
         return ClaimResult(
           success: false,
           message: 'Claim limit reached: maximum 3 items held simultaneously.',
-          item: item,
+          item: sanitizeItem(item),
         );
       }
 
@@ -440,7 +443,7 @@ class RoomEndpoint extends Endpoint {
           success: false,
           message:
               'Already ${item.status} by ${currentOwner ?? "another buyer"}.',
-          item: item,
+          item: sanitizeItem(item),
         );
       }
 
@@ -476,13 +479,13 @@ class RoomEndpoint extends Endpoint {
           .holdExpiry
           .expireHold(itemId);
 
-      // 2. Broadcast claim event to all connected clients
+      // 2. Broadcast claim event to all connected clients (sanitized)
       await session.messages.postMessage(
         'room_${result.item!.roomId}',
         RoomEvent(
           roomId: result.item!.roomId,
           type: 'item_claimed',
-          item: result.item,
+          item: sanitizeItem(result.item!),
           message: '${result.item!.name} claimed by $trimmedName!',
           timestamp: DateTime.now().toUtc(),
         ),
@@ -520,7 +523,7 @@ class RoomEndpoint extends Endpoint {
         return ClaimResult(
           success: false,
           message: 'You do not have an active hold on this item.',
-          item: item,
+          item: sanitizeItem(item),
         );
       }
 
@@ -530,7 +533,7 @@ class RoomEndpoint extends Endpoint {
         return ClaimResult(
           success: false,
           message: 'Your 60-second hold has expired.',
-          item: item,
+          item: sanitizeItem(item),
         );
       }
 
@@ -560,13 +563,13 @@ class RoomEndpoint extends Endpoint {
       // Cancel the scheduled expiry future call
       await session.serverpod.futureCalls.cancel('hold_item_$itemId');
 
-      // Broadcast confirmed order to room
+      // Broadcast confirmed order to room (sanitized)
       await session.messages.postMessage(
         'room_${result.item!.roomId}',
         RoomEvent(
           roomId: result.item!.roomId,
           type: 'item_confirmed',
-          item: result.item,
+          item: sanitizeItem(result.item!),
           message: '${result.item!.name} sold to $trimmedName!',
           timestamp: DateTime.now().toUtc(),
         ),
@@ -603,7 +606,7 @@ class RoomEndpoint extends Endpoint {
         return ClaimResult(
           success: false,
           message: 'You do not hold this item.',
-          item: item,
+          item: sanitizeItem(item),
         );
       }
 
@@ -633,7 +636,7 @@ class RoomEndpoint extends Endpoint {
         RoomEvent(
           roomId: result.item!.roomId,
           type: 'item_released',
-          item: result.item,
+          item: sanitizeItem(result.item!),
           message: '${result.item!.name} was released and is available again!',
           timestamp: DateTime.now().toUtc(),
         ),

@@ -542,6 +542,77 @@ void main() {
           expect(c4.message.toLowerCase(), contains('limit'));
         },
       );
+
+      test(
+        'Buyer privacy: listItems and stream events contain no contact details; getOrderSheet retains contacts',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Privacy Room',
+            'SafeSeller',
+          );
+          final sellerKey = room.sellerKey!;
+
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Private Dress',
+            1200.0,
+            1,
+          );
+
+          // Listen to stream before claim
+          final stream = endpoints.room.streamRoom(sessionBuilder, room.id!);
+          final streamFuture = stream.firstWhere(
+            (e) => e.type == 'item_claimed',
+          );
+
+          // Buyer claims with private contact info
+          final claim = await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'SecretBuyer',
+            '+919999888877',
+          );
+          expect(claim.success, isTrue);
+
+          // 1. Verify stream event item has no contact fields
+          final event = await streamFuture;
+          expect(event.item, isNotNull);
+          expect(event.item!.heldBy, equals('SecretBuyer'));
+          expect(event.item!.heldByContact, isNull);
+          expect(event.item!.soldToContact, isNull);
+
+          // 2. Verify listItems returns sanitized items with no contacts
+          final items = await endpoints.room.listItems(
+            sessionBuilder,
+            room.id!,
+          );
+          expect(items.length, 1);
+          expect(items.first.heldBy, equals('SecretBuyer'));
+          expect(items.first.heldByContact, isNull);
+          expect(items.first.soldToContact, isNull);
+
+          // Buyer confirms claim
+          final confirm = await endpoints.room.confirmClaim(
+            sessionBuilder,
+            item.id!,
+            'SecretBuyer',
+          );
+          expect(confirm.success, isTrue);
+
+          // 3. Verify getOrderSheet with sellerKey DOES retain buyer contact details
+          final orderSheet = await endpoints.room.getOrderSheet(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+          );
+          expect(orderSheet.buyers.length, 1);
+          expect(orderSheet.buyers.first.buyerName, equals('SecretBuyer'));
+          expect(orderSheet.buyers.first.buyerContact, equals('+919999888877'));
+        },
+      );
     },
   );
 }
