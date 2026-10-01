@@ -11,7 +11,7 @@ ClaimRoom is a full-stack Flutter and Serverpod application that enables small s
 
 2. **Atomic Double-Claim Prevention**:
    - Handled inside PostgreSQL transactions (`session.db.transaction`) using `LockMode.forUpdate`.
-   - Even when multiple buyers tap "Claim" at the exact same millisecond, row-level locks ensure only one claim succeeds. Double-selling is mathematically impossible.
+   - Claims run inside a database transaction with a row lock, so only one buyer can win an item. Even when multiple buyers tap "Claim" at the exact same millisecond, row-level locks ensure only one claim succeeds.
 
 3. **60-Second Hold & Future Calls**:
    - Winning claims enter a 60-second hold state (`Item.status = 'held'`).
