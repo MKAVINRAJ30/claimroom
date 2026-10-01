@@ -24,9 +24,12 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   late Room _room;
   List<Item> _items = [];
   bool _isLoading = true;
+  bool _isReconnecting = false;
   String _buyerName = '';
   String _buyerContact = '';
   StreamSubscription<RoomEvent>? _streamSub;
+  Timer? _reconnectTimer;
+  Timer? _pollingTimer;
 
   @override
   void initState() {
@@ -38,6 +41,12 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
     _loadItems();
     _subscribeToRoom();
 
+    // 10-second periodic refresh as a safety net
+    _pollingTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _loadItems(isBackground: true),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_buyerName.isEmpty) {
         _promptBuyerIdentity();
@@ -48,69 +57,104 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   @override
   void dispose() {
     _streamSub?.cancel();
+    _reconnectTimer?.cancel();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _loadItems() async {
+  Future<void> _loadItems({bool isBackground = false}) async {
     try {
       final items = await client.room.listItems(_room.id!);
       if (mounted) {
         setState(() {
           _items = items;
-          _isLoading = false;
+          if (!isBackground) _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !isBackground) {
         setState(() => _isLoading = false);
       }
     }
   }
 
   void _subscribeToRoom() {
+    _streamSub?.cancel();
     try {
-      _streamSub = client.room.streamRoom(_room.id!).listen(
-        (event) {
-          if (!mounted) return;
+      _streamSub = client.room
+          .streamRoom(_room.id!)
+          .listen(
+            (event) {
+              if (!mounted) return;
 
-          if (event.type == 'item_added' && event.item != null) {
-            setState(() {
-              _items.add(event.item!);
-            });
-          } else if (event.type == 'item_deleted' && event.item != null) {
-            setState(() {
-              _items.removeWhere((i) => i.id == event.item!.id);
-            });
-          } else if ((event.type == 'item_claimed' ||
-                  event.type == 'item_confirmed' ||
-                  event.type == 'item_released') &&
-              event.item != null) {
-            setState(() {
-              final idx = _items.indexWhere((i) => i.id == event.item!.id);
-              if (idx != -1) {
-                _items[idx] = event.item!;
-              } else {
-                _items.add(event.item!);
+              if (_isReconnecting) {
+                setState(() => _isReconnecting = false);
               }
-            });
 
-            // If someone else claimed an item
-            if (event.type == 'item_claimed' &&
-                event.item!.heldBy != _buyerName &&
-                event.message != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('⚡ ${event.message}'),
-                  duration: const Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          }
-        },
-        onError: (_) {},
-      );
-    } catch (_) {}
+              if (event.type == 'item_added' && event.item != null) {
+                setState(() {
+                  // Guard against duplicate items
+                  if (!_items.any((i) => i.id == event.item!.id)) {
+                    _items.add(event.item!);
+                  }
+                });
+              } else if (event.type == 'item_deleted' && event.item != null) {
+                setState(() {
+                  _items.removeWhere((i) => i.id == event.item!.id);
+                });
+              } else if ((event.type == 'item_claimed' ||
+                      event.type == 'item_confirmed' ||
+                      event.type == 'item_released') &&
+                  event.item != null) {
+                setState(() {
+                  final idx = _items.indexWhere((i) => i.id == event.item!.id);
+                  if (idx != -1) {
+                    _items[idx] = event.item!;
+                  } else {
+                    _items.add(event.item!);
+                  }
+                });
+
+                // If someone else claimed an item
+                if (event.type == 'item_claimed' &&
+                    event.item!.heldBy != _buyerName &&
+                    event.message != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('⚡ ${event.message}'),
+                      duration: const Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
+              } else if (event.type == 'room_status_changed') {
+                _loadItems(isBackground: true);
+              }
+            },
+            onError: (err) => _handleStreamDisconnect(),
+            onDone: () => _handleStreamDisconnect(),
+            cancelOnError: true,
+          );
+
+      if (mounted && _isReconnecting) {
+        setState(() => _isReconnecting = false);
+      }
+    } catch (_) {
+      _handleStreamDisconnect();
+    }
+  }
+
+  void _handleStreamDisconnect() {
+    if (!mounted) return;
+    setState(() => _isReconnecting = true);
+    _streamSub?.cancel();
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        _subscribeToRoom();
+        _loadItems(isBackground: true);
+      }
+    });
   }
 
   Future<void> _promptBuyerIdentity() async {
@@ -272,10 +316,10 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
     final mySold = _items
         .where((i) => i.status == 'sold' && i.soldTo == _buyerName)
         .toList();
-    final total = [
-      ...myHeld,
-      ...mySold,
-    ].fold<double>(0.0, (sum, i) => sum + i.price);
+    final total = [...myHeld, ...mySold].fold<double>(
+      0.0,
+      (sum, i) => sum + (i.price * i.quantity),
+    );
 
     showModalBottomSheet(
       context: context,
@@ -332,11 +376,13 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   (item) => ListTile(
                     dense: true,
                     leading: const Icon(Icons.timer, color: Color(0xFFF59E0B)),
-                    title: Text(item.name),
+                    title: Text(
+                      '${item.name}${item.quantity > 1 ? " (x${item.quantity})" : ""}',
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('₹${item.price.toStringAsFixed(0)}'),
+                        Text('₹${(item.price * item.quantity).toStringAsFixed(0)}'),
                         const SizedBox(width: 8),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
@@ -372,9 +418,11 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                       Icons.check_circle,
                       color: Color(0xFF10B981),
                     ),
-                    title: Text(item.name),
+                    title: Text(
+                      '${item.name}${item.quantity > 1 ? " (x${item.quantity})" : ""}',
+                    ),
                     trailing: Text(
-                      '₹${item.price.toStringAsFixed(0)}',
+                      '₹${(item.price * item.quantity).toStringAsFixed(0)}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -404,7 +452,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadItems,
+            onPressed: () => _loadItems(),
             tooltip: 'Refresh',
           ),
           Stack(
@@ -454,6 +502,40 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Reconnecting indicator if stream dropped
+                      if (_isReconnecting)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.amber.shade400),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.amber.shade900,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Reconnecting to live room stream...',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.amber.shade900,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       // Buyer identity bar
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -461,9 +543,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                           vertical: 10,
                         ),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceVariant.withOpacity(
-                            0.5,
-                          ),
+                          color: theme.colorScheme.surfaceContainerHighest.withAlpha(128),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey.shade300),
                         ),
@@ -512,8 +592,8 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: _room.isOpen
-                                  ? const Color(0xFF10B981).withOpacity(0.15)
-                                  : Colors.grey.withOpacity(0.2),
+                                  ? const Color(0xFF10B981).withAlpha(38)
+                                  : Colors.grey.withAlpha(51),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
@@ -578,6 +658,8 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   Widget _buildBuyerItemCard(Item item, ThemeData theme) {
     final isHeldByMe = item.status == 'held' && item.heldBy == _buyerName;
     final isSoldToMe = item.status == 'sold' && item.soldTo == _buyerName;
+    final totalPrice = item.price * item.quantity;
+    final qtySuffix = item.quantity > 1 ? ' (x${item.quantity})' : '';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -586,8 +668,8 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
         side: isHeldByMe
             ? const BorderSide(color: Color(0xFFF59E0B), width: 2)
             : (isSoldToMe
-                  ? const BorderSide(color: Color(0xFF10B981), width: 2)
-                  : BorderSide.none),
+                ? const BorderSide(color: Color(0xFF10B981), width: 2)
+                : BorderSide.none),
       ),
       elevation: isHeldByMe ? 4 : 1,
       child: Padding(
@@ -600,20 +682,33 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    item.name,
+                    '${item.name}$qtySuffix',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                Text(
-                  '₹${item.price.toStringAsFixed(0)}',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF10B981),
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '₹${totalPrice.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF10B981),
+                      ),
+                    ),
+                    if (item.quantity > 1)
+                      Text(
+                        '₹${item.price.toStringAsFixed(0)}/ea',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
@@ -687,7 +782,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF10B981),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                              ),
                             ),
                             onPressed: () => _confirmClaim(item),
                             child: const Text('CONFIRM CLAIM'),
@@ -698,7 +795,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red,
                             side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
                           ),
                           onPressed: () => _releaseClaim(item),
                           child: const Text('RELEASE'),

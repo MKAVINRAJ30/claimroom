@@ -1,31 +1,50 @@
 import 'dart:async';
-
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:claimroom_client/claimroom_client.dart';
 import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:serverpod_flutter/serverpod_flutter.dart';
 
-// When you are running the app on a physical device, you need to set the
-// server URL to the IP address of your computer. You can find the IP
-// address by running `ipconfig` on Windows or `ifconfig` on Mac/Linux.
-//
-// You can set the variable when running or building your app like this:
-// E.g. `flutter run --dart-define=SERVER_URL=https://api.example.com/`.
-//
-// Otherwise, the server URL is fetched from the assets/config.json file or
-// defaults to http://$localhost:8080/ if not found.
-final serverUrl = getServerUrl();
+/// Resolves the Serverpod backend URL with priority:
+/// 1. Compile-time flag: `--dart-define=SERVER_URL=https://api.your-project.serverpod.cloud/`
+///    (Recommended for Serverpod Cloud deployment)
+/// 2. Configuration file: assets/config.json ("apiUrl" key)
+/// 3. Default local development server: http://localhost:8080/
+Future<String> resolveServerUrl() async {
+  // Check for compile-time environment variable override
+  const serverUrlFromEnv = String.fromEnvironment('SERVER_URL');
+  if (serverUrlFromEnv.isNotEmpty) {
+    return serverUrlFromEnv.endsWith('/')
+        ? serverUrlFromEnv
+        : '$serverUrlFromEnv/';
+  }
 
-/// Sets up a global client object that can be used to talk to the server from
-/// anywhere in our app. The client is generated from your server code
-/// and is set up to connect to a Serverpod running on a local server on
-/// the default port. You will need to modify this to connect to staging or
-/// production servers.
-/// In a larger app, you may want to use the dependency injection of your choice
-/// instead of using a global client object. This is just a simple example.
+  // Check assets/config.json
+  try {
+    final data = await rootBundle.loadString('assets/config.json');
+    final config = jsonDecode(data) as Map<String, dynamic>;
+    final apiUrl = config['apiUrl'] as String?;
+    if (apiUrl != null && apiUrl.isNotEmpty) {
+      return apiUrl.endsWith('/') ? apiUrl : '$apiUrl/';
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      debugPrint('Notice: assets/config.json not loaded, using local default ($e)');
+    }
+  }
+
+  // Default to localhost
+  return 'http://localhost:8080/';
+}
+
+final serverUrl = resolveServerUrl();
+
 late final Client client;
 
 Future<void> initializeClient() async {
-  client = Client(await serverUrl)
+  final url = await serverUrl;
+  client = Client(url)
     ..connectivityMonitor = FlutterConnectivityMonitor()
     ..authSessionManager = FlutterAuthSessionManager();
   unawaited(client.auth.initialize());

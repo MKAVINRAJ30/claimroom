@@ -40,7 +40,7 @@ void main() {
             room.id!,
             'Silk Floral Scarf',
             499.0,
-            1,
+            3,
           );
           expect(item1.status, 'available');
           expect(item2.status, 'available');
@@ -123,18 +123,19 @@ void main() {
             winningBuyer,
           );
 
-          // 7. Verify Order Sheet for Seller
+          // 7. Verify Order Sheet for Seller (with quantity math)
           final orderSheet = await endpoints.room.getOrderSheet(
             sessionBuilder,
             room.id!,
           );
           expect(orderSheet.roomId, room.id);
-          expect(orderSheet.totalItemsSold, 2);
-          expect(orderSheet.grandTotal, 1499.0 + 499.0);
+          expect(orderSheet.totalItemsSold, 4); // 1 item1 + 3 item2
+          expect(orderSheet.grandTotal, 1499.0 + (499.0 * 3)); // 2996.0
           expect(orderSheet.buyers.length, 1);
           expect(orderSheet.buyers.first.buyerName, winningBuyer);
           expect(orderSheet.buyers.first.items.length, 2);
-          expect(orderSheet.buyers.first.totalAmount, 1998.0);
+          expect(orderSheet.buyers.first.itemCount, 4);
+          expect(orderSheet.buyers.first.totalAmount, 2996.0);
         },
       );
     },

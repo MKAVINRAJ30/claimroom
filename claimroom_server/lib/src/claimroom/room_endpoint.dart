@@ -20,12 +20,21 @@ class RoomEndpoint extends Endpoint {
     String title,
     String sellerName,
   ) async {
+    final trimmedTitle = title.trim();
+    final trimmedSellerName = sellerName.trim();
+    if (trimmedTitle.isEmpty) {
+      throw ArgumentError('Room title cannot be empty.');
+    }
+    if (trimmedSellerName.isEmpty) {
+      throw ArgumentError('Seller name cannot be empty.');
+    }
+
     for (var attempt = 0; attempt < 5; attempt++) {
       try {
         final room = Room(
           code: _newCode(),
-          title: title.trim(),
-          sellerName: sellerName.trim(),
+          title: trimmedTitle,
+          sellerName: trimmedSellerName,
           isOpen: true,
           createdAt: DateTime.now().toUtc(),
         );
@@ -87,11 +96,27 @@ class RoomEndpoint extends Endpoint {
     double price,
     int quantity,
   ) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError('Product name cannot be empty.');
+    }
+    if (price <= 0) {
+      throw ArgumentError('Price must be greater than 0.');
+    }
+    if (quantity < 1 || quantity > 99) {
+      throw ArgumentError('Quantity must be between 1 and 99.');
+    }
+
+    final room = await Room.db.findById(session, roomId);
+    if (room == null) {
+      throw ArgumentError('Room with ID $roomId does not exist.');
+    }
+
     final item = Item(
       roomId: roomId,
-      name: name.trim(),
+      name: trimmedName,
       price: price,
-      quantity: quantity > 0 ? quantity : 1,
+      quantity: quantity,
       status: 'available',
     );
     final inserted = await Item.db.insertRow(session, item);
@@ -111,28 +136,48 @@ class RoomEndpoint extends Endpoint {
   }
 
   /// Seller removes an available item.
+  /// Wrapped in a transaction with LockMode.forUpdate to prevent race conditions.
   Future<bool> deleteItem(Session session, int itemId) async {
-    final item = await Item.db.findById(session, itemId);
-    if (item == null) return false;
-    if (item.status != 'available') {
-      throw Exception('Cannot delete an item that is already held or sold');
+    Item? deletedItem;
+    int? targetRoomId;
+
+    await session.db.transaction((transaction) async {
+      final item = await Item.db.findById(
+        session,
+        itemId,
+        transaction: transaction,
+        lockMode: LockMode.forUpdate,
+      );
+
+      if (item == null) {
+        throw Exception('Item not found');
+      }
+      if (item.status != 'available') {
+        throw Exception(
+          'Cannot delete an item that is already held or sold (status: ${item.status})',
+        );
+      }
+
+      targetRoomId = item.roomId;
+      deletedItem = item;
+      await Item.db.deleteRow(session, item, transaction: transaction);
+    });
+
+    if (deletedItem != null && targetRoomId != null) {
+      await session.messages.postMessage(
+        'room_$targetRoomId',
+        RoomEvent(
+          roomId: targetRoomId!,
+          type: 'item_deleted',
+          item: deletedItem,
+          message: 'Item removed: ${deletedItem!.name}',
+          timestamp: DateTime.now().toUtc(),
+        ),
+      );
+      return true;
     }
 
-    final roomId = item.roomId;
-    await Item.db.deleteRow(session, item);
-
-    await session.messages.postMessage(
-      'room_$roomId',
-      RoomEvent(
-        roomId: roomId,
-        type: 'item_deleted',
-        item: item,
-        message: 'Item removed: ${item.name}',
-        timestamp: DateTime.now().toUtc(),
-      ),
-    );
-
-    return true;
+    return false;
   }
 
   /// Everyone in the room reads the current items.
@@ -155,6 +200,7 @@ class RoomEndpoint extends Endpoint {
   /// Uses a database transaction with LockMode.forUpdate to eliminate race conditions.
   /// If two buyers claim simultaneously, PostgreSQL row-level locks ensure only
   /// one succeeds.
+  /// Expired holds are treated as available and reset automatically.
   Future<ClaimResult> claimItem(
     Session session,
     int itemId,
@@ -198,7 +244,12 @@ class RoomEndpoint extends Endpoint {
         );
       }
 
-      if (item.status != 'available') {
+      final now = DateTime.now().toUtc();
+      final isHoldExpired = item.status == 'held' &&
+          item.holdExpiresAt != null &&
+          item.holdExpiresAt!.isBefore(now);
+
+      if (item.status != 'available' && !isHoldExpired) {
         final currentOwner = item.status == 'held' ? item.heldBy : item.soldTo;
         return ClaimResult(
           success: false,
@@ -208,8 +259,8 @@ class RoomEndpoint extends Endpoint {
         );
       }
 
-      // Claim successfully: place 60-second hold
-      final holdExpiresAt = DateTime.now().toUtc().add(
+      // Claim successfully: place 60-second hold (resets any previous expired hold)
+      final holdExpiresAt = now.add(
         const Duration(seconds: 60),
       );
       item.status = 'held';
@@ -409,6 +460,7 @@ class RoomEndpoint extends Endpoint {
 
   /// Generates the complete order sheet for the seller.
   /// Aggregates all confirmed (sold) items grouped by buyer name.
+  /// Quantity math: price is per unit, total = price * quantity.
   Future<OrderSheet> getOrderSheet(Session session, int roomId) async {
     final room = await Room.db.findById(session, roomId);
     if (room == null) throw Exception('Room not found');
@@ -432,7 +484,8 @@ class RoomEndpoint extends Endpoint {
         if (item.soldToContact != null && item.soldToContact!.isNotEmpty) {
           buyerContactMap[buyer] = item.soldToContact;
         }
-        grandTotal += item.price;
+        final itemTotal = item.price * item.quantity;
+        grandTotal += itemTotal;
         totalItemsSold += item.quantity;
       }
     }
@@ -440,7 +493,10 @@ class RoomEndpoint extends Endpoint {
     final buyerSummaries = buyerItemsMap.entries.map((entry) {
       final buyer = entry.key;
       final bItems = entry.value;
-      final total = bItems.fold<double>(0.0, (sum, i) => sum + i.price);
+      final total = bItems.fold<double>(
+        0.0,
+        (sum, i) => sum + (i.price * i.quantity),
+      );
       final count = bItems.fold<int>(0, (sum, i) => sum + i.quantity);
       return BuyerOrderSummary(
         buyerName: buyer,

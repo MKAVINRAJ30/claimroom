@@ -22,7 +22,10 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
   late Room _room;
   List<Item> _items = [];
   bool _isLoading = true;
+  bool _isReconnecting = false;
   StreamSubscription<RoomEvent>? _streamSub;
+  Timer? _reconnectTimer;
+  Timer? _pollingTimer;
 
   @override
   void initState() {
@@ -30,25 +33,33 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     _room = widget.room;
     _loadItems();
     _subscribeToRoom();
+
+    // 10-second periodic refresh as a safety net
+    _pollingTimer = Timer.periodic(
+      const Duration(seconds: 10),
+      (_) => _loadItems(isBackground: true),
+    );
   }
 
   @override
   void dispose() {
     _streamSub?.cancel();
+    _reconnectTimer?.cancel();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _loadItems() async {
+  Future<void> _loadItems({bool isBackground = false}) async {
     try {
       final items = await client.room.listItems(_room.id!);
       if (mounted) {
         setState(() {
           _items = items;
-          _isLoading = false;
+          if (!isBackground) _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !isBackground) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading items: $e')),
@@ -58,6 +69,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
   }
 
   void _subscribeToRoom() {
+    _streamSub?.cancel();
     try {
       _streamSub = client.room
           .streamRoom(_room.id!)
@@ -65,9 +77,16 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
             (event) {
               if (!mounted) return;
 
+              if (_isReconnecting) {
+                setState(() => _isReconnecting = false);
+              }
+
               if (event.type == 'item_added' && event.item != null) {
                 setState(() {
-                  _items.add(event.item!);
+                  // Guard against duplicate items
+                  if (!_items.any((i) => i.id == event.item!.id)) {
+                    _items.add(event.item!);
+                  }
                 });
               } else if (event.type == 'item_deleted' && event.item != null) {
                 setState(() {
@@ -99,11 +118,30 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                 _refreshRoomDetails();
               }
             },
-            onError: (err) {
-              // Stream error, fallback to periodic refresh if disconnected
-            },
+            onError: (err) => _handleStreamDisconnect(),
+            onDone: () => _handleStreamDisconnect(),
+            cancelOnError: true,
           );
-    } catch (_) {}
+
+      if (mounted && _isReconnecting) {
+        setState(() => _isReconnecting = false);
+      }
+    } catch (_) {
+      _handleStreamDisconnect();
+    }
+  }
+
+  void _handleStreamDisconnect() {
+    if (!mounted) return;
+    setState(() => _isReconnecting = true);
+    _streamSub?.cancel();
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        _subscribeToRoom();
+        _loadItems(isBackground: true);
+      }
+    });
   }
 
   Future<void> _refreshRoomDetails() async {
@@ -134,6 +172,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
   Future<void> _showAddItemDialog() async {
     final nameCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
+    final quantityCtrl = TextEditingController(text: '1');
 
     await showDialog(
       context: context,
@@ -154,13 +193,21 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: priceCtrl,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
-                labelText: 'Price (₹)',
+                labelText: 'Price per Unit (₹)',
                 hintText: 'e.g. 1499',
                 prefixText: '₹ ',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: quantityCtrl,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Quantity (1-99)',
+                hintText: '1',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -175,11 +222,20 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
             onPressed: () async {
               final name = nameCtrl.text.trim();
               final price = double.tryParse(priceCtrl.text.trim());
-              if (name.isEmpty || price == null) return;
+              final quantity = int.tryParse(quantityCtrl.text.trim()) ?? 1;
+
+              if (name.isEmpty || price == null || price <= 0 || quantity < 1 || quantity > 99) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a valid name, price (>0), and quantity (1-99).'),
+                  ),
+                );
+                return;
+              }
 
               Navigator.pop(ctx);
               try {
-                await client.room.addItem(_room.id!, name, price, 1);
+                await client.room.addItem(_room.id!, name, price, quantity);
                 _loadItems();
               } catch (e) {
                 if (mounted) {
@@ -197,24 +253,35 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
   }
 
   Future<void> _seedDemoItems() async {
-    final demoItems = [
-      ('Vintage Oversized Denim Jacket', 1499.0),
-      ('Handmade Ceramic Coffee Mug', 399.0),
-      ('Retro Aviator Sunglasses', 799.0),
-      ('Pure Mulberry Silk Scarf', 649.0),
-    ];
+    try {
+      final demoItems = [
+        ('Vintage Oversized Denim Jacket', 1499.0, 1),
+        ('Handmade Ceramic Coffee Mug', 399.0, 3),
+        ('Retro Aviator Sunglasses', 799.0, 1),
+        ('Pure Mulberry Silk Scarf', 649.0, 2),
+      ];
 
-    for (final item in demoItems) {
-      await client.room.addItem(_room.id!, item.$1, item.$2, 1);
-    }
-    _loadItems();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Added 4 demo products for live sale!'),
-          backgroundColor: Color(0xFF10B981),
-        ),
-      );
+      for (final item in demoItems) {
+        await client.room.addItem(_room.id!, item.$1, item.$2, item.$3);
+      }
+      await _loadItems();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Added 4 demo products for live sale!'),
+            backgroundColor: Color(0xFF10B981),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to seed demo items: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -250,7 +317,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     final soldCount = _items.where((i) => i.status == 'sold').length;
     final totalSoldRevenue = _items
         .where((i) => i.status == 'sold')
-        .fold<double>(0.0, (sum, i) => sum + i.price);
+        .fold<double>(0.0, (sum, i) => sum + (i.price * i.quantity));
 
     return Scaffold(
       appBar: AppBar(
@@ -258,7 +325,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadItems,
+            onPressed: () => _loadItems(),
             tooltip: 'Refresh Items',
           ),
           IconButton(
@@ -288,6 +355,40 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Reconnecting indicator if stream dropped
+                      if (_isReconnecting)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.amber.shade400),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.amber.shade900,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Reconnecting to live room stream...',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.amber.shade900,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
                       // Header Card with Room Code & Status
                       Card(
                         elevation: 2,
@@ -299,12 +400,10 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                           child: Column(
                             children: [
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         'Seller: ${_room.sellerName}',
@@ -323,14 +422,10 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                             vertical: 6,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: theme.colorScheme.primary
-                                                .withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
+                                            color: theme.colorScheme.primary.withAlpha(25),
+                                            borderRadius: BorderRadius.circular(8),
                                             border: Border.all(
-                                              color: theme.colorScheme.primary
-                                                  .withOpacity(0.3),
+                                              color: theme.colorScheme.primary.withAlpha(70),
                                             ),
                                           ),
                                           child: Row(
@@ -342,15 +437,11 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                                   fontWeight: FontWeight.bold,
                                                   fontSize: 18,
                                                   letterSpacing: 2,
-                                                  color:
-                                                      theme.colorScheme.primary,
+                                                  color: theme.colorScheme.primary,
                                                 ),
                                               ),
                                               const SizedBox(width: 8),
-                                              const Icon(
-                                                Icons.copy,
-                                                size: 16,
-                                              ),
+                                              const Icon(Icons.copy, size: 16),
                                             ],
                                           ),
                                         ),
@@ -382,24 +473,11 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                               const Divider(height: 24),
                               // Live Stats Counter
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceAround,
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
                                 children: [
-                                  _statItem(
-                                    'Available',
-                                    '$availableCount',
-                                    const Color(0xFF10B981),
-                                  ),
-                                  _statItem(
-                                    'In-Cart / Held',
-                                    '$heldCount',
-                                    const Color(0xFFF59E0B),
-                                  ),
-                                  _statItem(
-                                    'Sold',
-                                    '$soldCount',
-                                    theme.colorScheme.primary,
-                                  ),
+                                  _statItem('Available', '$availableCount', const Color(0xFF10B981)),
+                                  _statItem('In-Cart / Held', '$heldCount', const Color(0xFFF59E0B)),
+                                  _statItem('Sold', '$soldCount', theme.colorScheme.primary),
                                   _statItem(
                                     'Revenue',
                                     '₹${totalSoldRevenue.toStringAsFixed(0)}',
@@ -422,9 +500,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                               icon: const Icon(Icons.add_shopping_cart),
                               label: const Text('Add Product'),
                               style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                                 backgroundColor: theme.colorScheme.primary,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
@@ -436,10 +512,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                           ),
                           const SizedBox(width: 10),
                           OutlinedButton.icon(
-                            icon: const Icon(
-                              Icons.flash_on,
-                              color: Color(0xFFF59E0B),
-                            ),
+                            icon: const Icon(Icons.flash_on, color: Color(0xFFF59E0B)),
                             label: const Text('Seed 4 Demo Items'),
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
@@ -486,26 +559,22 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
+                          child: const Padding(
+                            padding: EdgeInsets.all(32),
                             child: Center(
                               child: Column(
                                 children: [
-                                  const Icon(
-                                    Icons.inventory_2_outlined,
-                                    size: 48,
-                                    color: Colors.grey,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
+                                  Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey),
+                                  SizedBox(height: 12),
+                                  Text(
                                     'No products added yet.',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
                                     ),
                                   ),
-                                  const SizedBox(height: 6),
-                                  const Text(
+                                  SizedBox(height: 6),
+                                  Text(
                                     'Tap "Add Product" or "Seed 4 Demo Items" to start your live sale!',
                                     style: TextStyle(color: Colors.grey),
                                   ),
@@ -515,9 +584,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                           ),
                         )
                       else
-                        ..._items.map(
-                          (item) => _buildSellerItemCard(item, theme),
-                        ),
+                        ..._items.map((item) => _buildSellerItemCard(item, theme)),
                     ],
                   ),
                 ),
@@ -549,7 +616,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
   Widget _buildSellerItemCard(Item item, ThemeData theme) {
     Color badgeColor;
     String badgeText;
-    Widget? trailingWidget;
+    Widget trailingWidget;
 
     if (item.status == 'available') {
       badgeColor = const Color(0xFF10B981);
@@ -579,6 +646,9 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
       trailingWidget = const Icon(Icons.check_circle, color: Color(0xFF8B5CF6));
     }
 
+    final totalPrice = item.price * item.quantity;
+    final qtySuffix = item.quantity > 1 ? ' (x${item.quantity})' : '';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -590,7 +660,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: badgeColor.withOpacity(0.12),
+                color: badgeColor.withAlpha(30),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -606,7 +676,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.name,
+                    '${item.name}$qtySuffix',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -616,13 +686,20 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                   Row(
                     children: [
                       Text(
-                        '₹${item.price.toStringAsFixed(0)}',
+                        '₹${totalPrice.toStringAsFixed(0)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF10B981),
                           fontSize: 15,
                         ),
                       ),
+                      if (item.quantity > 1) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          '(₹${item.price.toStringAsFixed(0)}/ea)',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ],
                       const SizedBox(width: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -630,7 +707,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: badgeColor.withOpacity(0.15),
+                          color: badgeColor.withAlpha(35),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(

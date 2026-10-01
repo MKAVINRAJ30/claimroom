@@ -66,7 +66,9 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
           : '';
       buffer.writeln('👤 *${buyer.buyerName}*$contact');
       for (final item in buyer.items) {
-        buffer.writeln('  • ${item.name} - ₹${item.price.toStringAsFixed(0)}');
+        final qtyStr = item.quantity > 1 ? ' (x${item.quantity})' : '';
+        final lineTotal = item.price * item.quantity;
+        buffer.writeln('  • ${item.name}$qtyStr - ₹${lineTotal.toStringAsFixed(0)}');
       }
       buffer.writeln('  *Subtotal: ₹${buyer.totalAmount.toStringAsFixed(0)}*');
     }
@@ -342,15 +344,18 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      '• ${item.name}',
-                      style: const TextStyle(fontSize: 14),
+                    Expanded(
+                      child: Text(
+                        '• ${item.name}${item.quantity > 1 ? "  (x${item.quantity})" : ""}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
                     ),
                     Text(
-                      '₹${item.price.toStringAsFixed(0)}',
+                      '₹${(item.price * item.quantity).toStringAsFixed(0)}',
                       style: TextStyle(
-                        color: Colors.grey.shade700,
+                        color: Colors.grey.shade800,
                         fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
