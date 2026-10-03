@@ -6,7 +6,7 @@ import 'package:claimroom_client/claimroom_client.dart';
 import 'package:serverpod_flutter/serverpod_flutter.dart';
 
 /// Resolves the Serverpod backend URL with priority:
-/// 1. Compile-time flag: `--dart-define=SERVER_URL=https://api.your-project.serverpod.cloud/`
+/// 1. Compile-time flag: `--dart-define=SERVER_URL=<your cloud API URL>`
 ///    (Recommended for Serverpod Cloud deployment)
 /// 2. Configuration file: assets/config.json ("apiUrl" key)
 /// 3. Default local development server: http://localhost:8080/

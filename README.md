@@ -77,7 +77,19 @@ Deployed test link: coming soon (to be added after deployment to Serverpod Cloud
    cd claimroom_flutter
    flutter run -d chrome
    ```
-   *For cloud deployments, pass `--dart-define=SERVER_URL=https://api.your-project.serverpod.cloud/` or configure `assets/config.json`.*
+
+---
+
+## ☁️ Deployment
+
+To deploy ClaimRoom to Serverpod Cloud:
+1. Install the Serverpod Cloud CLI as in the official documentation.
+2. Run `serverpod cloud --help` to see the available commands.
+3. Create a project in the Serverpod Cloud console.
+4. Deploy the server using the Serverpod Cloud CLI.
+5. Set the Flutter app's server URL:
+   - Via compile-time define: `--dart-define=SERVER_URL=<your cloud API URL>` (TODO for author: set real cloud API URL upon deployment)
+   - Or by setting the `apiUrl` in `claimroom_flutter/assets/config.json`.
 
 ---
 
