@@ -1186,6 +1186,125 @@ void main() {
           await session.close();
         },
       );
+
+      test(
+        'Hold expiry on read sweep: expired hold returned as available by listItems without future call, broadcasts item_released, unexpired hold untouched',
+        () async {
+          // 1. Seller creates room and adds 2 items
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Hold Expiry Sweep Room',
+            'SweepSeller',
+          );
+          final sellerKey = room.sellerKey!;
+
+          final itemExpired = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Antique Brass Bell',
+            650.0,
+            1,
+          );
+
+          final itemActive = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Handmade Wool Rug',
+            2400.0,
+            1,
+          );
+
+          // 2. Buyers claim both items
+          const token1 = 'token_expired_buyer_12345';
+          const token2 = 'token_active_buyer_123456';
+
+          final claim1 = await endpoints.room.claimItem(
+            sessionBuilder,
+            itemExpired.id!,
+            'BuyerExpired',
+            '+919876500001',
+            token1,
+          );
+          expect(claim1.success, isTrue);
+
+          final claim2 = await endpoints.room.claimItem(
+            sessionBuilder,
+            itemActive.id!,
+            'BuyerActive',
+            '+919876500002',
+            token2,
+          );
+          expect(claim2.success, isTrue);
+
+          // 3. Listen to stream for broadcasted item_released event
+          final stream = endpoints.room.streamRoom(sessionBuilder, room.id!);
+          final releasedEventFuture = stream.firstWhere(
+            (e) => e.type == 'item_released',
+          );
+
+          // 4. Manually expire itemExpired's hold in the database without running future call
+          final session = sessionBuilder.build();
+          final dbItemExpired = await Item.db.findById(
+            session,
+            itemExpired.id!,
+          );
+          expect(dbItemExpired, isNotNull);
+          dbItemExpired!.holdExpiresAt = DateTime.now().toUtc().subtract(
+            const Duration(seconds: 10),
+          );
+          await Item.db.updateRow(session, dbItemExpired);
+          await session.close();
+
+          // 5. Call listItems (this triggers the sweep helper _releaseExpiredHolds)
+          final items = await endpoints.room.listItems(
+            sessionBuilder,
+            room.id!,
+          );
+          expect(items.length, 2);
+
+          // Verify expired hold is reset to 'available' with heldBy/token/holdExpiresAt cleared
+          final sweptItem = items.firstWhere((i) => i.id == itemExpired.id);
+          expect(sweptItem.status, equals('available'));
+          expect(sweptItem.heldBy, isNull);
+          expect(sweptItem.heldByContact, isNull);
+          expect(sweptItem.heldByToken, isNull);
+          expect(sweptItem.holdExpiresAt, isNull);
+
+          // Verify unexpired hold is NOT touched (remains held)
+          final activeItem = items.firstWhere((i) => i.id == itemActive.id);
+          expect(activeItem.status, equals('held'));
+          expect(activeItem.heldBy, equals('BuyerActive'));
+          expect(activeItem.holdExpiresAt, isNotNull);
+          expect(
+            activeItem.holdExpiresAt!.isAfter(DateTime.now().toUtc()),
+            isTrue,
+          );
+
+          // 6. Verify broadcast 'item_released' event was emitted
+          final event = await releasedEventFuture;
+          expect(event.type, equals('item_released'));
+          expect(event.roomId, equals(room.id));
+          expect(event.item, isNotNull);
+          expect(event.item!.id, equals(itemExpired.id));
+          expect(event.item!.status, equals('available'));
+          expect(event.item!.heldBy, isNull);
+          expect(event.item!.heldByContact, isNull);
+          expect(event.item!.heldByToken, isNull);
+
+          // 7. Verify directly in database that itemExpired is available
+          final checkSession = sessionBuilder.build();
+          final finalDbItem = await Item.db.findById(
+            checkSession,
+            itemExpired.id!,
+          );
+          expect(finalDbItem!.status, equals('available'));
+          expect(finalDbItem.heldBy, isNull);
+          expect(finalDbItem.holdExpiresAt, isNull);
+          await checkSession.close();
+        },
+      );
     },
   );
 }

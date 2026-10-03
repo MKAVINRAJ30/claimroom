@@ -382,7 +382,14 @@ class RoomEndpoint extends Endpoint {
 
     // Cancel matching future calls after the transaction completes
     for (final itemId in releasedItemIds) {
-      await session.serverpod.futureCalls.cancel('hold_item_$itemId');
+      try {
+        await session.serverpod.futureCalls.cancel('hold_item_$itemId');
+      } catch (e) {
+        session.log(
+          'Failed to cancel future call for item $itemId: $e',
+          level: LogLevel.warning,
+        );
+      }
     }
 
     await session.messages.postMessage(
@@ -400,9 +407,59 @@ class RoomEndpoint extends Endpoint {
     return updatedRoom!;
   }
 
+  /// Sweeps expired holds in the room inside a single locked transaction,
+  /// resetting them to 'available' and clearing hold fields.
+  /// After the transaction, broadcasts 'item_released' RoomEvent for each item.
+  /// This ensures hold expiry works even when Serverpod future calls are disabled.
+  Future<void> _releaseExpiredHolds(Session session, int roomId) async {
+    final List<Item> releasedItems = [];
+    final now = DateTime.now().toUtc();
+
+    await session.db.transaction((transaction) async {
+      final expiredHeldItems = await Item.db.find(
+        session,
+        where: (t) =>
+            t.roomId.equals(roomId) &
+            t.status.equals('held') &
+            t.holdExpiresAt.notEquals(null) &
+            (t.holdExpiresAt < now),
+        transaction: transaction,
+        lockMode: LockMode.forUpdate,
+      );
+
+      for (final item in expiredHeldItems) {
+        item.status = 'available';
+        item.heldBy = null;
+        item.heldByContact = null;
+        item.heldByToken = null;
+        item.holdExpiresAt = null;
+        final updated = await Item.db.updateRow(
+          session,
+          item,
+          transaction: transaction,
+        );
+        releasedItems.add(updated);
+      }
+    });
+
+    for (final item in releasedItems) {
+      await session.messages.postMessage(
+        'room_$roomId',
+        RoomEvent(
+          roomId: roomId,
+          type: 'item_released',
+          item: sanitizeItem(item),
+          message: '${item.name} hold expired and is available!',
+          timestamp: DateTime.now().toUtc(),
+        ),
+      );
+    }
+  }
+
   /// Everyone in the room reads the current items.
-  /// Private contact fields are sanitized.
+  /// Sweeps expired holds first, then returns items with private contact fields sanitized.
   Future<List<Item>> listItems(Session session, int roomId) async {
+    await _releaseExpiredHolds(session, roomId);
     final items = await Item.db.find(
       session,
       where: (t) => t.roomId.equals(roomId),
@@ -444,6 +501,11 @@ class RoomEndpoint extends Endpoint {
         success: false,
         message: 'Invalid buyer session token.',
       );
+    }
+
+    final initialItem = await Item.db.findById(session, itemId);
+    if (initialItem != null) {
+      await _releaseExpiredHolds(session, initialItem.roomId);
     }
 
     ClaimResult result = await session.db.transaction((transaction) async {
@@ -542,13 +604,20 @@ class RoomEndpoint extends Endpoint {
 
     if (result.success && result.item != null) {
       // 1. Schedule automatic release future call
-      await session.serverpod.futureCalls
-          .callWithDelay(
-            const Duration(seconds: 60),
-            identifier: 'hold_item_$itemId',
-          )
-          .holdExpiry
-          .expireHold(itemId);
+      try {
+        await session.serverpod.futureCalls
+            .callWithDelay(
+              const Duration(seconds: 60),
+              identifier: 'hold_item_$itemId',
+            )
+            .holdExpiry
+            .expireHold(itemId);
+      } catch (e) {
+        session.log(
+          'Failed to schedule hold expiry future call for item $itemId: $e',
+          level: LogLevel.warning,
+        );
+      }
 
       // 2. Broadcast claim event to all connected clients (sanitized)
       await session.messages.postMessage(
@@ -638,7 +707,14 @@ class RoomEndpoint extends Endpoint {
 
     if (result.success && result.item != null) {
       // Cancel the scheduled expiry future call
-      await session.serverpod.futureCalls.cancel('hold_item_$itemId');
+      try {
+        await session.serverpod.futureCalls.cancel('hold_item_$itemId');
+      } catch (e) {
+        session.log(
+          'Failed to cancel future call for item $itemId: $e',
+          level: LogLevel.warning,
+        );
+      }
 
       // Broadcast confirmed order to room (sanitized)
       await session.messages.postMessage(
@@ -708,7 +784,14 @@ class RoomEndpoint extends Endpoint {
     });
 
     if (result.success && result.item != null) {
-      await session.serverpod.futureCalls.cancel('hold_item_$itemId');
+      try {
+        await session.serverpod.futureCalls.cancel('hold_item_$itemId');
+      } catch (e) {
+        session.log(
+          'Failed to cancel future call for item $itemId: $e',
+          level: LogLevel.warning,
+        );
+      }
 
       await session.messages.postMessage(
         'room_${result.item!.roomId}',
@@ -784,7 +867,14 @@ class RoomEndpoint extends Endpoint {
     });
 
     // Cancel the scheduled expiry future call
-    await session.serverpod.futureCalls.cancel('hold_item_$itemId');
+    try {
+      await session.serverpod.futureCalls.cancel('hold_item_$itemId');
+    } catch (e) {
+      session.log(
+        'Failed to cancel future call for item $itemId: $e',
+        level: LogLevel.warning,
+      );
+    }
 
     // Broadcast item_released event to room (sanitized)
     await session.messages.postMessage(
@@ -811,6 +901,8 @@ class RoomEndpoint extends Endpoint {
     int roomId,
     String sellerKey,
   ) async {
+    await _releaseExpiredHolds(session, roomId);
+
     final room = await Room.db.findById(session, roomId);
     if (room == null) throw Exception('Room not found');
     _verifySellerKey(room, sellerKey);
