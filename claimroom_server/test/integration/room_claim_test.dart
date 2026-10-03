@@ -647,7 +647,7 @@ void main() {
           expect(confirm.item!.heldByToken, isNull);
           expect(confirm.item!.soldToToken, isNull);
 
-          // 3. Verify getOrderSheet with sellerKey DOES retain buyer contact details
+          // 3. Verify getOrderSheet with sellerKey DOES retain buyer contact details but strips tokens
           final orderSheet = await endpoints.room.getOrderSheet(
             sessionBuilder,
             room.id!,
@@ -656,6 +656,12 @@ void main() {
           expect(orderSheet.buyers.length, 1);
           expect(orderSheet.buyers.first.buyerName, equals('SecretBuyer'));
           expect(orderSheet.buyers.first.buyerContact, equals('+919999888877'));
+          expect(
+            orderSheet.buyers.first.items.first.soldToContact,
+            equals('+919999888877'),
+          );
+          expect(orderSheet.buyers.first.items.first.heldByToken, isNull);
+          expect(orderSheet.buyers.first.items.first.soldToToken, isNull);
         },
       );
 

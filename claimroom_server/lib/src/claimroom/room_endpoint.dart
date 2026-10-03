@@ -858,7 +858,9 @@ class RoomEndpoint extends Endpoint {
       return BuyerOrderSummary(
         buyerName: buyer,
         buyerContact: buyerContactMap[buyer],
-        items: bItems,
+        items: bItems
+            .map((i) => i.copyWith(heldByToken: null, soldToToken: null))
+            .toList(),
         totalAmount: total,
         itemCount: count,
       );
