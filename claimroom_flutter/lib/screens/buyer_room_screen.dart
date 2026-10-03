@@ -227,7 +227,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
               autofocus: true,
               decoration: const InputDecoration(
                 labelText: 'Your Name',
-                hintText: 'e.g. Priya or Rahul',
+                hintText: 'Enter your name',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.person),
               ),

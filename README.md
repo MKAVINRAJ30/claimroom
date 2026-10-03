@@ -125,7 +125,7 @@ dart test
 
 ## 📦 Demo Data
 
-The **"⚡ Quick Start Instant Demo"** button on the home screen and the **"Seed 4 Demo Items"** button in the seller dashboard create sample inventory items (e.g., vintage jacket, handmade ceramic mug, retro sunglasses, linen shirt). These allow judges and testers to test the entire claim, hold timer, early release, confirmation, and order sheet workflow immediately without manually creating catalog entries.
+The **"Seed 4 Demo Items"** button in the seller dashboard creates sample inventory items (e.g., vintage jacket, handmade ceramic mug, retro sunglasses, linen shirt). This allows judges and testers to test the entire claim, hold timer, early release, confirmation, and order sheet workflow immediately without manually creating catalog entries.
 
 ---
 
@@ -134,8 +134,8 @@ The **"⚡ Quick Start Instant Demo"** button on the home screen and the **"Seed
 1. **Launch the App**:
    - Open two browser windows side by side (Window A = Seller, Window B = Buyer).
 2. **Start a Live Sale**:
-   - In Window A, click **"⚡ Quick Start Instant Demo"** or create a room ("Friday Thrift Drop").
-   - Click **"Open as Seller"**. Notice the 5-character room code (e.g. `K9X2P`) and your **Seller Secret Key**.
+   - In Window A, under **"I'm a Seller"**, create a room ("Friday Thrift Drop").
+   - Click **"Seed 4 Demo Items"** in the seller dashboard. Notice the 5-character room code (e.g. `K9X2P`) and your **Seller Secret Key**.
 3. **Shareable Join Link**:
    - Click **"Copy Join Link"** on the seller dashboard. Open that URL in Window B; notice the join code is pre-filled automatically!
 4. **Join as Buyer**:

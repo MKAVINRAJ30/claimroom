@@ -28,7 +28,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   // Buyer form
   final _codeCtrl = TextEditingController();
-  final _buyerNameCtrl = TextEditingController(text: 'Priya');
+  final _buyerNameCtrl = TextEditingController();
   bool _isJoiningRoom = false;
 
   @override
@@ -338,106 +338,6 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Future<void> _quickStartDemo() async {
-    setState(() => _isCreatingRoom = true);
-    try {
-      final room = await client.room.createRoom(
-        'Live Thrift Showcase',
-        'Studio Retro',
-      );
-      final sellerKey = room.sellerKey!;
-
-      await client.room.addItem(
-        room.id!,
-        sellerKey,
-        '90s Vintage Leather Jacket',
-        1999.0,
-        1,
-      );
-      await client.room.addItem(
-        room.id!,
-        sellerKey,
-        'Handmade Ceramic Matcha Bowl',
-        499.0,
-        1,
-      );
-      await client.room.addItem(
-        room.id!,
-        sellerKey,
-        'Retro Polarized Sunglasses',
-        799.0,
-        1,
-      );
-      await client.room.addItem(
-        room.id!,
-        sellerKey,
-        'Boho Woven Tote Bag',
-        599.0,
-        1,
-      );
-
-      if (mounted) {
-        setState(() => _isCreatingRoom = false);
-        _codeCtrl.text = room.code;
-
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.bolt, color: Color(0xFFF59E0B)),
-                SizedBox(width: 8),
-                Text('Demo Room Ready!'),
-              ],
-            ),
-            content: Text(
-              'Created "${room.title}" with 4 demo products.\nRoom Code: ${room.code}\n\nChoose how you want to test:',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => BuyerRoomScreen(
-                        room: room,
-                        initialBuyerName: 'Priya',
-                      ),
-                    ),
-                  );
-                },
-                child: const Text('Open as Buyer (Priya)'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SellerRoomScreen(
-                        room: room,
-                        sellerKey: sellerKey,
-                      ),
-                    ),
-                  );
-                },
-                child: const Text('Open as Seller'),
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isCreatingRoom = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error creating demo room: $e')),
-        );
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -487,26 +387,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 32),
-
-                  // Quick Demo Button
-                  OutlinedButton.icon(
-                    icon: const Icon(
-                      Icons.auto_awesome,
-                      color: Color(0xFFF59E0B),
-                    ),
-                    label: const Text('⚡ Quick Start Instant Demo'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      side: const BorderSide(color: Color(0xFFF59E0B)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: _isCreatingRoom ? null : _quickStartDemo,
-                  ),
-
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
                   // Tab switcher: Seller vs Buyer
                   Container(
@@ -686,7 +567,7 @@ class _HomeScreenState extends State<HomeScreen>
             controller: _buyerNameCtrl,
             decoration: const InputDecoration(
               labelText: 'Your Name',
-              hintText: 'e.g. Priya',
+              hintText: 'Enter your name',
               border: OutlineInputBorder(),
               prefixIcon: Icon(Icons.person_outline),
             ),
