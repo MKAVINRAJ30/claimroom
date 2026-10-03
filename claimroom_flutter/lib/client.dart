@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:claimroom_client/claimroom_client.dart';
-import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:serverpod_flutter/serverpod_flutter.dart';
 
 /// Resolves the Serverpod backend URL with priority:
@@ -46,8 +45,5 @@ late final Client client;
 
 Future<void> initializeClient() async {
   final url = await serverUrl;
-  client = Client(url)
-    ..connectivityMonitor = FlutterConnectivityMonitor()
-    ..authSessionManager = FlutterAuthSessionManager();
-  unawaited(client.auth.initialize());
+  client = Client(url)..connectivityMonitor = FlutterConnectivityMonitor();
 }

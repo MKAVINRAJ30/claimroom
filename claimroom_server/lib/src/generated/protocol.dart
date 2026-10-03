@@ -15,10 +15,6 @@ import 'package:claimroom_server/src/generated/claimroom/item.dart'
     as _i24jg4ei;
 import 'package:serverpod/protocol.dart' as _isp;
 import 'package:serverpod/serverpod.dart' as _is;
-import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
-    as _iacs;
-import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
-    as _iais;
 import 'claimroom/buyer_order_summary.dart' as _it96tugq;
 import 'claimroom/claim_result.dart' as _in969j7u;
 import 'claimroom/item.dart' as _idgc2c1i;
@@ -41,7 +37,7 @@ class Protocol extends _is.DatabaseSerializationManager {
 
   factory Protocol() => _instance;
 
-  static final Protocol _instance = Protocol._().._registerHostProtocols();
+  static final Protocol _instance = Protocol._();
 
   static List<_isp.TableDefinition> get targetTableDefinitions => [
     _isp.TableDefinition(
@@ -271,8 +267,6 @@ class Protocol extends _is.DatabaseSerializationManager {
       ],
       managed: true,
     ),
-    ..._iais.Protocol.targetTableDefinitions,
-    ..._iacs.Protocol.targetTableDefinitions,
     ..._isp.Protocol.targetTableDefinitions,
   ];
 
@@ -370,12 +364,6 @@ class Protocol extends _is.DatabaseSerializationManager {
           as T;
     }
     try {
-      return _iais.Protocol().deserialize<T>(data, t);
-    } on _is.DeserializationTypeNotFoundException catch (_) {}
-    try {
-      return _iacs.Protocol().deserialize<T>(data, t);
-    } on _is.DeserializationTypeNotFoundException catch (_) {}
-    try {
       return _isp.Protocol().deserialize<T>(data, t);
     } on _is.DeserializationTypeNotFoundException catch (_) {}
     return super.deserialize<T>(data, t);
@@ -423,18 +411,6 @@ class Protocol extends _is.DatabaseSerializationManager {
       case _inu78a98.HoldExpiryFutureCallExpireHoldModel():
         return 'HoldExpiryFutureCallExpireHoldModel';
     }
-    className = _iais.Protocol().getClassNameForObject(data);
-    if (className != null) {
-      return className.contains('.')
-          ? className
-          : 'serverpod_auth_idp.$className';
-    }
-    className = _iacs.Protocol().getClassNameForObject(data);
-    if (className != null) {
-      return className.contains('.')
-          ? className
-          : 'serverpod_auth_core.$className';
-    }
     className = _isp.Protocol().getClassNameForObject(data);
     if (className != null) {
       return className.contains('.') ? className : 'serverpod.$className';
@@ -474,14 +450,6 @@ class Protocol extends _is.DatabaseSerializationManager {
         data['data'],
       );
     }
-    if (dataClassName.startsWith('serverpod_auth_idp.')) {
-      data['className'] = dataClassName.substring(19);
-      return _iais.Protocol().deserializeByClassName(data);
-    }
-    if (dataClassName.startsWith('serverpod_auth_core.')) {
-      data['className'] = dataClassName.substring(20);
-      return _iacs.Protocol().deserializeByClassName(data);
-    }
     if (dataClassName.startsWith('serverpod.')) {
       data['className'] = dataClassName.substring(10);
       return _isp.Protocol().deserializeByClassName(data);
@@ -489,25 +457,8 @@ class Protocol extends _is.DatabaseSerializationManager {
     return super.deserializeByClassName(data);
   }
 
-  void _registerHostProtocols() {
-    _iais.Protocol().registerHostProtocol('claimroom', this);
-    _iacs.Protocol().registerHostProtocol('claimroom', this);
-  }
-
   @override
   _is.Table? getTableForType(Type t) {
-    {
-      var table = _iais.Protocol().getTableForType(t);
-      if (table != null) {
-        return table;
-      }
-    }
-    {
-      var table = _iacs.Protocol().getTableForType(t);
-      if (table != null) {
-        return table;
-      }
-    }
     {
       var table = _isp.Protocol().getTableForType(t);
       if (table != null) {
@@ -542,10 +493,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       return null;
     }
     try {
-      return _iais.Protocol().mapRecordToJson(record);
-    } catch (_) {}
-    try {
-      return _iacs.Protocol().mapRecordToJson(record);
+      return _isp.Protocol().mapRecordToJson(record);
     } catch (_) {}
     throw Exception('Unsupported record type ${record.runtimeType}');
   }

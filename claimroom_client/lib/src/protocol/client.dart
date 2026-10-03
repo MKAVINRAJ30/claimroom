@@ -22,10 +22,6 @@ import 'package:claimroom_client/src/protocol/claimroom/room.dart' as _if1qb44m;
 import 'package:claimroom_client/src/protocol/claimroom/room_event.dart'
     as _i0ir7zxv;
 import 'package:http/http.dart' as _i85jenna;
-import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
-    as _iacc;
-import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
-    as _iaic;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'protocol.dart' as _il2as5qe;
 
@@ -279,17 +275,6 @@ class EndpointRoom extends _isc.EndpointRef {
   );
 }
 
-class Modules {
-  Modules(Client client) {
-    serverpod_auth_idp = _iaic.Caller(client);
-    serverpod_auth_core = _iacc.Caller(client);
-  }
-
-  late final _iaic.Caller serverpod_auth_idp;
-
-  late final _iacc.Caller serverpod_auth_core;
-}
-
 class Client extends _isc.ServerpodClientShared {
   Client(
     String host, {
@@ -318,19 +303,13 @@ class Client extends _isc.ServerpodClientShared {
          httpClientOverride: httpClientOverride,
        ) {
     room = EndpointRoom(this);
-    modules = Modules(this);
   }
 
   late final EndpointRoom room;
-
-  late final Modules modules;
 
   @override
   Map<String, _isc.EndpointRef> get endpointRefLookup => {'room': room};
 
   @override
-  Map<String, _isc.ModuleEndpointCaller> get moduleLookup => {
-    'serverpod_auth_idp': modules.serverpod_auth_idp,
-    'serverpod_auth_core': modules.serverpod_auth_core,
-  };
+  Map<String, _isc.ModuleEndpointCaller> get moduleLookup => {};
 }
