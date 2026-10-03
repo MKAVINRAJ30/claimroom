@@ -30,7 +30,7 @@ Small independent sellers in India and worldwide sell through **Instagram Lives*
 
 ## 🌐 Deployed Test Link
 
-TODO: [ClaimRoom Web Live Demo](https://claimroom-demo.serverpod.cloud)
+Deployed test link: coming soon (to be added after deployment to Serverpod Cloud).
 
 ---
 
