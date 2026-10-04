@@ -12,6 +12,10 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:claimroom_client/src/protocol/claimroom/item.dart' as _il26i9sg;
+import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
+    as _iacc;
+import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
+    as _iaic;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
 import 'claimroom/buyer_order_summary.dart' as _it96tugq;
 import 'claimroom/claim_result.dart' as _in969j7u;
@@ -34,7 +38,7 @@ class Protocol extends _isc.SerializationManager {
 
   factory Protocol() => _instance;
 
-  static final Protocol _instance = Protocol._();
+  static final Protocol _instance = Protocol._().._registerHostProtocols();
 
   static String? getClassNameFromObjectJson(dynamic data) {
     if (data is! Map) return null;
@@ -120,6 +124,12 @@ class Protocol extends _isc.SerializationManager {
       return (data as List).map((e) => deserialize<_il26i9sg.Item>(e)).toList()
           as T;
     }
+    try {
+      return _iaic.Protocol().deserialize<T>(data, t);
+    } on _isc.DeserializationTypeNotFoundException catch (_) {}
+    try {
+      return _iacc.Protocol().deserialize<T>(data, t);
+    } on _isc.DeserializationTypeNotFoundException catch (_) {}
     return super.deserialize<T>(data, t);
   }
 
@@ -161,6 +171,18 @@ class Protocol extends _isc.SerializationManager {
       case _ii05qs2r.RoomEvent():
         return 'RoomEvent';
     }
+    className = _iaic.Protocol().getClassNameForObject(data);
+    if (className != null) {
+      return className.contains('.')
+          ? className
+          : 'serverpod_auth_idp.$className';
+    }
+    className = _iacc.Protocol().getClassNameForObject(data);
+    if (className != null) {
+      return className.contains('.')
+          ? className
+          : 'serverpod_auth_core.$className';
+    }
     return null;
   }
 
@@ -191,7 +213,20 @@ class Protocol extends _isc.SerializationManager {
     if (dataClassName == 'RoomEvent') {
       return deserialize<_ii05qs2r.RoomEvent>(data['data']);
     }
+    if (dataClassName.startsWith('serverpod_auth_idp.')) {
+      data['className'] = dataClassName.substring(19);
+      return _iaic.Protocol().deserializeByClassName(data);
+    }
+    if (dataClassName.startsWith('serverpod_auth_core.')) {
+      data['className'] = dataClassName.substring(20);
+      return _iacc.Protocol().deserializeByClassName(data);
+    }
     return super.deserializeByClassName(data);
+  }
+
+  void _registerHostProtocols() {
+    _iaic.Protocol().registerHostProtocol('claimroom', this);
+    _iacc.Protocol().registerHostProtocol('claimroom', this);
   }
 
   @override
@@ -206,6 +241,12 @@ class Protocol extends _isc.SerializationManager {
     if (record == null) {
       return null;
     }
+    try {
+      return _iaic.Protocol().mapRecordToJson(record);
+    } catch (_) {}
+    try {
+      return _iacc.Protocol().mapRecordToJson(record);
+    } catch (_) {}
     throw Exception('Unsupported record type ${record.runtimeType}');
   }
 }

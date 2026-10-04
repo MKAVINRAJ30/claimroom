@@ -33,6 +33,7 @@ dependencies:
   claimroom_client:
     path: ../claimroom_client
   serverpod_flutter: 4.0.3
+  serverpod_auth_idp_flutter: 4.0.3
   web: ^1.0.0
 
 dev_dependencies:

@@ -12,6 +12,10 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:claimroom_server/src/generated/future_calls.dart' as _ibfxidep;
 import 'package:serverpod/serverpod.dart' as _is;
+import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
+    as _iacs;
+import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
+    as _iais;
 import '../claimroom/room_endpoint.dart' as _iwlj7kd2;
 export 'future_calls.dart' show ServerpodFutureCallsGetter;
 
@@ -479,6 +483,10 @@ class Endpoints extends _is.EndpointDispatch {
         ),
       },
     );
+    modules['serverpod_auth_idp'] = _iais.Endpoints()
+      ..initializeEndpoints(server);
+    modules['serverpod_auth_core'] = _iacs.Endpoints()
+      ..initializeEndpoints(server);
   }
 
   @override
