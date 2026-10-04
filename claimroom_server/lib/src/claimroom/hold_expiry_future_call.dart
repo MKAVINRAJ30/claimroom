@@ -1,11 +1,10 @@
 import 'package:serverpod/serverpod.dart';
 import '../generated/protocol.dart';
-import 'sanitizer.dart';
+import 'hold_helper.dart';
 
 class HoldExpiryFutureCall extends FutureCall {
   Future<void> expireHold(Session session, int itemId) async {
-    Item? releasedItem;
-    int? targetRoomId;
+    HoldEndResult? endResult;
 
     await session.db.transaction((transaction) async {
       final item = await Item.db.findById(
@@ -21,32 +20,17 @@ class HoldExpiryFutureCall extends FutureCall {
         if (item.holdExpiresAt != null &&
             (item.holdExpiresAt!.isBefore(now) ||
                 item.holdExpiresAt!.difference(now).inSeconds <= 1)) {
-          item.status = 'available';
-          item.heldBy = null;
-          item.heldByContact = null;
-          item.heldByToken = null;
-          item.holdExpiresAt = null;
-          releasedItem = await Item.db.updateRow(
+          endResult = await HoldHelper.endHoldAndHandOver(
             session,
+            transaction,
             item,
-            transaction: transaction,
           );
-          targetRoomId = item.roomId;
         }
       }
     });
 
-    if (releasedItem != null && targetRoomId != null) {
-      await session.messages.postMessage(
-        'room_$targetRoomId',
-        RoomEvent(
-          roomId: targetRoomId!,
-          type: 'item_released',
-          item: sanitizeItem(releasedItem!),
-          message: '${releasedItem!.name} hold expired and is available!',
-          timestamp: DateTime.now().toUtc(),
-        ),
-      );
+    if (endResult != null) {
+      await HoldHelper.broadcastHoldEnd(session, endResult!);
     }
   }
 }

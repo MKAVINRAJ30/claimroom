@@ -410,6 +410,99 @@ class Endpoints extends _is.EndpointDispatch {
                     params['sellerKey'],
                   ),
         ),
+        'joinWaitlist': _is.MethodConnector(
+          name: 'joinWaitlist',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'itemId': _is.ParameterDescription(
+              name: 'itemId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'buyerName': _is.ParameterDescription(
+              name: 'buyerName',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'buyerToken': _is.ParameterDescription(
+              name: 'buyerToken',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).joinWaitlist(
+                    session,
+                    params['roomId'],
+                    params['itemId'],
+                    params['buyerName'],
+                    params['buyerToken'],
+                  ),
+        ),
+        'leaveWaitlist': _is.MethodConnector(
+          name: 'leaveWaitlist',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'itemId': _is.ParameterDescription(
+              name: 'itemId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'buyerToken': _is.ParameterDescription(
+              name: 'buyerToken',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).leaveWaitlist(
+                    session,
+                    params['roomId'],
+                    params['itemId'],
+                    params['buyerToken'],
+                  ),
+        ),
+        'getMyWaitlist': _is.MethodConnector(
+          name: 'getMyWaitlist',
+          params: {
+            'roomId': _is.ParameterDescription(
+              name: 'roomId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+            'buyerToken': _is.ParameterDescription(
+              name: 'buyerToken',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['room'] as _iwlj7kd2.RoomEndpoint).getMyWaitlist(
+                    session,
+                    params['roomId'],
+                    params['buyerToken'],
+                  ),
+        ),
         'getOrderSheet': _is.MethodConnector(
           name: 'getOrderSheet',
           params: {

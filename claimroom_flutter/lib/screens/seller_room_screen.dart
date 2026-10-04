@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:claimroom_client/claimroom_client.dart';
 import '../client.dart';
 import '../utils/storage_helper.dart';
@@ -135,6 +136,18 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                     ),
                   );
                 }
+              } else if (event.type == 'waitlist_updated' &&
+                  event.waitlistItemId != null) {
+                setState(() {
+                  final idx = _items.indexWhere(
+                    (i) => i.id == event.waitlistItemId,
+                  );
+                  if (idx != -1) {
+                    _items[idx] = _items[idx].copyWith(
+                      waitlistCount: event.waitlistCount ?? 0,
+                    );
+                  }
+                });
               } else if (event.type == 'room_status_changed' ||
                   event.type == 'sale_ended') {
                 _refreshRoomDetails();
@@ -513,6 +526,97 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     );
   }
 
+  void _showQrDialog() {
+    final origin = Uri.base.origin.isNotEmpty && Uri.base.origin != 'null'
+        ? Uri.base.origin
+        : 'https://claimroom.app';
+    final link = '$origin/?code=${_room.code}';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Center(
+          child: Text(
+            'Scan to Join Live Sale',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Text(
+              'Buyers can scan this QR code with their phone camera to enter the room instantly.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(15),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: SizedBox(
+                width: 200,
+                height: 200,
+                child: QrImageView(
+                  data: link,
+                  version: QrVersions.auto,
+                  size: 200.0,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'ROOM CODE',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey,
+                letterSpacing: 1.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            SelectableText(
+              _room.code,
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 4,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -741,21 +845,54 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      OutlinedButton.icon(
-                                        icon: const Icon(Icons.link, size: 16),
-                                        label: const Text('Copy Join Link'),
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 8,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 4,
+                                        alignment: WrapAlignment.end,
+                                        children: [
+                                          OutlinedButton.icon(
+                                            icon: const Icon(
+                                              Icons.qr_code,
+                                              size: 16,
                                             ),
+                                            label: const Text('Show QR'),
+                                            style: OutlinedButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      8,
+                                                    ),
+                                              ),
+                                            ),
+                                            onPressed: _showQrDialog,
                                           ),
-                                        ),
-                                        onPressed: _copyJoinLink,
+                                          OutlinedButton.icon(
+                                            icon: const Icon(
+                                              Icons.link,
+                                              size: 16,
+                                            ),
+                                            label: const Text('Copy Join Link'),
+                                            style: OutlinedButton.styleFrom(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      8,
+                                                    ),
+                                              ),
+                                            ),
+                                            onPressed: _copyJoinLink,
+                                          ),
+                                        ],
                                       ),
                                       const SizedBox(height: 6),
                                       Row(
@@ -1187,6 +1324,29 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                           ),
                         ),
                       ),
+                      if (item.waitlistCount != null &&
+                          item.waitlistCount! > 0) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Text(
+                            '${item.waitlistCount} waiting',
+                            style: TextStyle(
+                              color: Colors.blue.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],

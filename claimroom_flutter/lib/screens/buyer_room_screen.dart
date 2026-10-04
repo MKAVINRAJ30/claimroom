@@ -30,6 +30,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   bool _isReconnecting = false;
   String _buyerName = '';
   String _buyerContact = '';
+  Map<int, int> _myWaitlistPositions = {};
   StreamSubscription<RoomEvent>? _streamSub;
   Timer? _reconnectTimer;
   Timer? _pollingTimer;
@@ -93,6 +94,20 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
     super.dispose();
   }
 
+  Future<void> _pollWaitlist() async {
+    if (_room.id == null || _buyerToken.isEmpty) return;
+    try {
+      final positions = await client.room.getMyWaitlist(_room.id!, _buyerToken);
+      if (mounted) {
+        setState(() {
+          _myWaitlistPositions = {
+            for (final p in positions) p.itemId: p.position,
+          };
+        });
+      }
+    } catch (_) {}
+  }
+
   Future<void> _loadItems({bool isBackground = false}) async {
     try {
       final items = await client.room.listItems(_room.id!);
@@ -102,6 +117,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
           if (!isBackground) _isLoading = false;
         });
       }
+      await _pollWaitlist();
     } catch (e) {
       if (mounted && !isBackground) {
         setState(() => _isLoading = false);
@@ -147,18 +163,47 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   }
                 });
 
-                // If someone else claimed an item
-                if (event.type == 'item_claimed' &&
-                    event.item!.heldBy != _buyerName &&
-                    event.message != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('⚡ ${event.message}'),
-                      duration: const Duration(seconds: 2),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                if (event.type == 'item_claimed' && event.item != null) {
+                  final heldBy = event.item!.heldBy;
+                  final trimmed = _buyerName.trim();
+                  if (heldBy != null &&
+                      trimmed.isNotEmpty &&
+                      heldBy == trimmed) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          "🎉 It's your turn for ${event.item!.name}! You have 60 seconds to confirm",
+                        ),
+                        backgroundColor: const Color(0xFF10B981),
+                        duration: const Duration(seconds: 4),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  } else if (event.message != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('⚡ ${event.message}'),
+                        duration: const Duration(seconds: 2),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
                 }
+                _pollWaitlist();
+              } else if (event.type == 'waitlist_updated') {
+                if (event.waitlistItemId != null) {
+                  setState(() {
+                    final idx = _items.indexWhere(
+                      (i) => i.id == event.waitlistItemId,
+                    );
+                    if (idx != -1) {
+                      _items[idx] = _items[idx].copyWith(
+                        waitlistCount: event.waitlistCount ?? 0,
+                      );
+                    }
+                  });
+                }
+                _pollWaitlist();
               } else if (event.type == 'sale_ended') {
                 setState(() {
                   _room.isOpen = false;
@@ -352,6 +397,75 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error releasing: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _joinWaitlist(Item item) async {
+    if (_buyerName.isEmpty) {
+      await _promptBuyerIdentity();
+      if (_buyerName.isEmpty) return;
+    }
+
+    try {
+      final pos = await client.room.joinWaitlist(
+        _room.id!,
+        item.id!,
+        _buyerName.trim(),
+        _buyerToken,
+      );
+      if (mounted) {
+        setState(() {
+          _myWaitlistPositions[item.id!] = pos;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Joined waitlist for ${item.name}! You are #$pos in line.',
+            ),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _loadItems(isBackground: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error joining waitlist: $e'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _leaveWaitlist(Item item) async {
+    try {
+      await client.room.leaveWaitlist(_room.id!, item.id!, _buyerToken);
+      if (mounted) {
+        setState(() {
+          _myWaitlistPositions.remove(item.id!);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Left waitlist for ${item.name}.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _loadItems(isBackground: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error leaving waitlist: $e'),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -1142,8 +1256,15 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   }
 
   Widget _buildBuyerItemCard(Item item, ThemeData theme) {
-    final isHeldByMe = item.status == 'held' && item.heldBy == _buyerName;
-    final isSoldToMe = item.status == 'sold' && item.soldTo == _buyerName;
+    final trimmedBuyer = _buyerName.trim();
+    final isHeldByMe =
+        item.status == 'held' &&
+        (item.heldBy == _buyerName ||
+            (trimmedBuyer.isNotEmpty && item.heldBy == trimmedBuyer));
+    final isSoldToMe =
+        item.status == 'sold' &&
+        (item.soldTo == _buyerName ||
+            (trimmedBuyer.isNotEmpty && item.soldTo == trimmedBuyer));
     final totalPrice = item.price * item.quantity;
     final qtySuffix = item.quantity > 1 ? ' (x${item.quantity})' : '';
 
@@ -1257,6 +1378,26 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                 ),
                 child: Column(
                   children: [
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD1FAE5),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF10B981)),
+                      ),
+                      child: const Text(
+                        "🎉 It's your turn! You have 60 seconds to confirm",
+                        style: TextStyle(
+                          color: Color(0xFF065F46),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -1317,7 +1458,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   ],
                 ),
               )
-            else if (item.status == 'held')
+            else if (item.status == 'held') ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1358,8 +1499,10 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                     ),
                   ],
                 ),
-              )
-            else if (isSoldToMe)
+              ),
+              const SizedBox(height: 8),
+              _buildWaitlistSection(item),
+            ] else if (isSoldToMe)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1382,7 +1525,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   ],
                 ),
               )
-            else
+            else ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1400,9 +1543,100 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              _buildWaitlistSection(item),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildWaitlistSection(Item item) {
+    final myPos = _myWaitlistPositions[item.id];
+    final waitCount = item.waitlistCount ?? 0;
+
+    if (myPos != null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blue.shade200),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.hourglass_top, size: 16, color: Color(0xFF1D4ED8)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'You are #$myPos in line${waitCount > 0 ? " ($waitCount waiting)" : ""}',
+                style: const TextStyle(
+                  color: Color(0xFF1D4ED8),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red.shade700,
+                side: BorderSide(color: Colors.red.shade300),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: () => _leaveWaitlist(item),
+              child: const Text(
+                'Leave waitlist',
+                style: TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        if (waitCount > 0) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Text(
+              '$waitCount waiting',
+              style: TextStyle(
+                color: Colors.blue.shade800,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.queue, size: 16),
+            label: const Text('Join waitlist'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF4338CA),
+              side: const BorderSide(color: Color(0xFF818CF8)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: _room.isOpen ? () => _joinWaitlist(item) : null,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -5,3 +5,5 @@ fields:
   item: Item?
   message: String?
   timestamp: DateTime
+  waitlistItemId: int?
+  waitlistCount: int?

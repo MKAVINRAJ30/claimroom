@@ -27,6 +27,16 @@ ClaimRoom is a full-stack Flutter and Serverpod application that enables small s
    - Sellers view an aggregated order sheet (`OrderSheet`) grouped by buyer.
    - 1-tap "Copy WhatsApp Summary" formats a clean order breakdown ready to post into WhatsApp groups or buyer DMs.
 
+6. **Waitlist with Auto-Handover**:
+   - When an item is held or sold, buyers can join the waitlist (up to 10 entries per item).
+   - When a hold ends without a sale (expired, buyer released, or seller released), the earliest eligible waitlisted buyer automatically receives a fresh 60s hold in the same database transaction.
+   - Buyers with 3 active holds are skipped and kept in queue.
+   - Waitlists are cleared automatically when an item is sold, deleted, or when the live sale ends.
+   - Waitlist counts are broadcast via `waitlist_updated` RoomEvents; buyer details are never leaked.
+
+7. **QR Code Sharing**:
+   - Large QR code dialog powered by `qr_flutter` in `claimroom_flutter` displaying the buyer join link and 5-character room code.
+
 ## Project Structure
 
 - `claimroom_server/`: Serverpod backend (PostgreSQL, future calls, streaming endpoints, transactions).

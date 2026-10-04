@@ -1,0 +1,11 @@
+class: WaitlistEntry
+table: waitlist_entry
+fields:
+  roomId: int
+  itemId: int
+  buyerName: String
+  buyerToken: String
+  createdAt: DateTime
+indexes:
+  waitlist_item_idx:
+    fields: itemId

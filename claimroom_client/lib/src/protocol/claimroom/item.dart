@@ -31,7 +31,9 @@ abstract class Item
     this.soldToContact,
     this.soldToToken,
     this.soldAt,
-  }) : paid = paid ?? false;
+    int? waitlistCount,
+  }) : paid = paid ?? false,
+       waitlistCount = waitlistCount ?? 0;
 
   factory Item({
     int? id,
@@ -50,6 +52,7 @@ abstract class Item
     String? soldToContact,
     String? soldToToken,
     DateTime? soldAt,
+    int? waitlistCount,
   }) = _ItemImpl;
 
   factory Item.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -78,6 +81,7 @@ abstract class Item
       soldAt: jsonSerialization['soldAt'] == null
           ? null
           : _isc.DateTimeJsonExtension.fromJson(jsonSerialization['soldAt']),
+      waitlistCount: jsonSerialization['waitlistCount'] as int?,
     );
   }
 
@@ -116,6 +120,8 @@ abstract class Item
 
   DateTime? soldAt;
 
+  int? waitlistCount;
+
   /// Returns a shallow copy of this [Item]
   /// with some or all fields replaced by the given arguments.
   @_isc.useResult
@@ -136,6 +142,7 @@ abstract class Item
     String? soldToContact,
     String? soldToToken,
     DateTime? soldAt,
+    int? waitlistCount,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -157,6 +164,7 @@ abstract class Item
       if (soldToContact != null) 'soldToContact': soldToContact,
       if (soldToToken != null) 'soldToToken': soldToToken,
       if (soldAt != null) 'soldAt': soldAt?.toJson(),
+      if (waitlistCount != null) 'waitlistCount': waitlistCount,
     };
   }
 
@@ -180,6 +188,7 @@ abstract class Item
       if (soldToContact != null) 'soldToContact': soldToContact,
       if (soldToToken != null) 'soldToToken': soldToToken,
       if (soldAt != null) 'soldAt': soldAt?.toJson(),
+      if (waitlistCount != null) 'waitlistCount': waitlistCount,
     };
   }
 
@@ -209,6 +218,7 @@ class _ItemImpl extends Item {
     String? soldToContact,
     String? soldToToken,
     DateTime? soldAt,
+    int? waitlistCount,
   }) : super._(
          id: id,
          roomId: roomId,
@@ -226,6 +236,7 @@ class _ItemImpl extends Item {
          soldToContact: soldToContact,
          soldToToken: soldToToken,
          soldAt: soldAt,
+         waitlistCount: waitlistCount,
        );
 
   /// Returns a shallow copy of this [Item]
@@ -249,6 +260,7 @@ class _ItemImpl extends Item {
     Object? soldToContact = _Undefined,
     Object? soldToToken = _Undefined,
     Object? soldAt = _Undefined,
+    Object? waitlistCount = _Undefined,
   }) {
     return Item(
       id: id is int? ? id : this.id,
@@ -273,6 +285,7 @@ class _ItemImpl extends Item {
           : this.soldToContact,
       soldToToken: soldToToken is String? ? soldToToken : this.soldToToken,
       soldAt: soldAt is DateTime? ? soldAt : this.soldAt,
+      waitlistCount: waitlistCount is int? ? waitlistCount : this.waitlistCount,
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:serverpod/serverpod.dart';
 import '../generated/future_calls.dart';
 import '../generated/protocol.dart';
 import 'sanitizer.dart';
+import 'hold_helper.dart';
 
 class RoomEndpoint extends Endpoint {
   static const _letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -249,6 +250,11 @@ class RoomEndpoint extends Endpoint {
 
       targetRoomId = item.roomId;
       deletedItem = item;
+      await WaitlistEntry.db.deleteWhere(
+        session,
+        where: (t) => t.itemId.equals(itemId),
+        transaction: transaction,
+      );
       await Item.db.deleteRow(session, item, transaction: transaction);
     });
 
@@ -373,11 +379,19 @@ class RoomEndpoint extends Endpoint {
         item.heldByContact = null;
         item.heldByToken = null;
         item.holdExpiresAt = null;
+        item.waitlistCount = 0;
         await Item.db.updateRow(session, item, transaction: transaction);
         if (item.id != null) {
           releasedItemIds.add(item.id!);
         }
       }
+
+      // Clear all waitlists in this room when the sale ends
+      await WaitlistEntry.db.deleteWhere(
+        session,
+        where: (t) => t.roomId.equals(roomId),
+        transaction: transaction,
+      );
     });
 
     // Cancel matching future calls after the transaction completes
@@ -408,11 +422,11 @@ class RoomEndpoint extends Endpoint {
   }
 
   /// Sweeps expired holds in the room inside a single locked transaction,
-  /// resetting them to 'available' and clearing hold fields.
-  /// After the transaction, broadcasts 'item_released' RoomEvent for each item.
-  /// This ensures hold expiry works even when Serverpod future calls are disabled.
+  /// resetting them or handing them over to the next waitlisted buyer.
+  /// After the transaction, broadcasts matching events.
+  /// This ensures hold expiry and handovers work even when Serverpod future calls are disabled.
   Future<void> _releaseExpiredHolds(Session session, int roomId) async {
-    final List<Item> releasedItems = [];
+    final List<HoldEndResult> results = [];
     final now = DateTime.now().toUtc();
 
     await session.db.transaction((transaction) async {
@@ -428,31 +442,13 @@ class RoomEndpoint extends Endpoint {
       );
 
       for (final item in expiredHeldItems) {
-        item.status = 'available';
-        item.heldBy = null;
-        item.heldByContact = null;
-        item.heldByToken = null;
-        item.holdExpiresAt = null;
-        final updated = await Item.db.updateRow(
-          session,
-          item,
-          transaction: transaction,
-        );
-        releasedItems.add(updated);
+        final result = await _endHoldAndHandOver(session, transaction, item);
+        results.add(result);
       }
     });
 
-    for (final item in releasedItems) {
-      await session.messages.postMessage(
-        'room_$roomId',
-        RoomEvent(
-          roomId: roomId,
-          type: 'item_released',
-          item: sanitizeItem(item),
-          message: '${item.name} hold expired and is available!',
-          timestamp: DateTime.now().toUtc(),
-        ),
-      );
+    for (final result in results) {
+      await _broadcastHoldEnd(session, result);
     }
   }
 
@@ -465,6 +461,14 @@ class RoomEndpoint extends Endpoint {
       where: (t) => t.roomId.equals(roomId),
       orderBy: (t) => t.id,
     );
+    for (final item in items) {
+      if (item.id != null) {
+        item.waitlistCount = await WaitlistEntry.db.count(
+          session,
+          where: (t) => t.itemId.equals(item.id!),
+        );
+      }
+    }
     return items.map(sanitizeItem).toList();
   }
 
@@ -688,6 +692,14 @@ class RoomEndpoint extends Endpoint {
       item.heldByContact = null;
       item.heldByToken = null;
       item.holdExpiresAt = null;
+      item.waitlistCount = 0;
+
+      // Clear waitlist for this item when sold
+      await WaitlistEntry.db.deleteWhere(
+        session,
+        where: (t) => t.itemId.equals(itemId),
+        transaction: transaction,
+      );
 
       final updated = await Item.db.updateRow(
         session,
@@ -727,6 +739,19 @@ class RoomEndpoint extends Endpoint {
           timestamp: DateTime.now().toUtc(),
         ),
       );
+
+      // Broadcast waitlist_updated event
+      await session.messages.postMessage(
+        'room_${result.item!.roomId}',
+        RoomEvent(
+          roomId: result.item!.roomId,
+          type: 'waitlist_updated',
+          waitlistItemId: itemId,
+          waitlistCount: 0,
+          item: null,
+          timestamp: DateTime.now().toUtc(),
+        ),
+      );
     }
 
     return result;
@@ -734,12 +759,15 @@ class RoomEndpoint extends Endpoint {
 
   /// Buyer cancels or releases a held item back to the room before expiry.
   /// Enforces token match so only the buyer session that held the item can release it.
+  /// If waitlisted buyers exist, automatically hands over to the next eligible buyer.
   Future<ClaimResult> releaseClaim(
     Session session,
     int itemId,
     String buyerToken,
   ) async {
     final trimmedToken = buyerToken.trim();
+
+    HoldEndResult? endResult;
 
     ClaimResult result = await session.db.transaction((transaction) async {
       final item = await Item.db.findById(
@@ -764,45 +792,17 @@ class RoomEndpoint extends Endpoint {
         );
       }
 
-      item.status = 'available';
-      item.heldBy = null;
-      item.heldByContact = null;
-      item.heldByToken = null;
-      item.holdExpiresAt = null;
-
-      final updated = await Item.db.updateRow(
-        session,
-        item,
-        transaction: transaction,
-      );
+      endResult = await _endHoldAndHandOver(session, transaction, item);
 
       return ClaimResult(
         success: true,
         message: 'Item released back to the room.',
-        item: sanitizeItem(updated),
+        item: sanitizeItem(endResult!.item),
       );
     });
 
-    if (result.success && result.item != null) {
-      try {
-        await session.serverpod.futureCalls.cancel('hold_item_$itemId');
-      } catch (e) {
-        session.log(
-          'Failed to cancel future call for item $itemId: $e',
-          level: LogLevel.warning,
-        );
-      }
-
-      await session.messages.postMessage(
-        'room_${result.item!.roomId}',
-        RoomEvent(
-          roomId: result.item!.roomId,
-          type: 'item_released',
-          item: sanitizeItem(result.item!),
-          message: '${result.item!.name} was released and is available again!',
-          timestamp: DateTime.now().toUtc(),
-        ),
-      );
+    if (endResult != null) {
+      await _broadcastHoldEnd(session, endResult!);
     }
 
     return result;
@@ -811,6 +811,7 @@ class RoomEndpoint extends Endpoint {
   /// Seller forces the release of an abandoned hold back to the room before the 60s timer expires.
   /// Requires a valid sellerKey.
   /// Wrapped in a database transaction with LockMode.forUpdate to prevent race conditions.
+  /// If waitlisted buyers exist, automatically hands over to the next eligible buyer.
   Future<Item> releaseHoldAsSeller(
     Session session,
     int itemId,
@@ -833,7 +834,7 @@ class RoomEndpoint extends Endpoint {
       );
     }
 
-    Item? updatedItem;
+    HoldEndResult? endResult;
 
     await session.db.transaction((transaction) async {
       final lockedItem = await Item.db.findById(
@@ -853,44 +854,224 @@ class RoomEndpoint extends Endpoint {
         );
       }
 
-      lockedItem.status = 'available';
-      lockedItem.heldBy = null;
-      lockedItem.heldByContact = null;
-      lockedItem.heldByToken = null;
-      lockedItem.holdExpiresAt = null;
-
-      updatedItem = await Item.db.updateRow(
-        session,
-        lockedItem,
-        transaction: transaction,
-      );
+      endResult = await _endHoldAndHandOver(session, transaction, lockedItem);
     });
 
-    // Cancel the scheduled expiry future call
-    try {
-      await session.serverpod.futureCalls.cancel('hold_item_$itemId');
-    } catch (e) {
-      session.log(
-        'Failed to cancel future call for item $itemId: $e',
-        level: LogLevel.warning,
-      );
+    if (endResult != null) {
+      await _broadcastHoldEnd(session, endResult!);
     }
 
-    // Broadcast item_released event to room (sanitized)
+    return sanitizeItem(endResult!.item);
+  }
+
+  /// Buyer joins the waitlist for an item currently held or sold by another buyer.
+  /// Returns the buyer's 1-indexed position in the waitlist.
+  Future<int> joinWaitlist(
+    Session session,
+    int roomId,
+    int itemId,
+    String buyerName,
+    String buyerToken,
+  ) async {
+    final trimmedName = buyerName.trim();
+    final trimmedToken = buyerToken.trim();
+    if (trimmedName.isEmpty) {
+      throw ArgumentError('Please enter your name to join waitlist.');
+    }
+    if (trimmedToken.isEmpty) {
+      throw ArgumentError('Invalid buyer session token.');
+    }
+
+    final room = await Room.db.findById(session, roomId);
+    if (room == null || !room.isOpen) {
+      throw ArgumentError('The room is closed for waitlists.');
+    }
+
+    int position = 0;
+    int updatedCount = 0;
+
+    await session.db.transaction((transaction) async {
+      final item = await Item.db.findById(
+        session,
+        itemId,
+        transaction: transaction,
+        lockMode: LockMode.forUpdate,
+      );
+
+      if (item == null || item.roomId != roomId) {
+        throw ArgumentError('Item not found in this room.');
+      }
+
+      if (item.status != 'held' && item.status != 'sold') {
+        throw ArgumentError(
+          'Cannot join waitlist for available item. You can claim it directly.',
+        );
+      }
+
+      final currentHolderToken = item.status == 'held'
+          ? item.heldByToken
+          : item.soldToToken;
+
+      if (currentHolderToken != null && currentHolderToken == trimmedToken) {
+        throw ArgumentError('You already hold or purchased this item.');
+      }
+
+      final existing = await WaitlistEntry.db.findFirstRow(
+        session,
+        where: (t) =>
+            t.itemId.equals(itemId) & t.buyerToken.equals(trimmedToken),
+        transaction: transaction,
+      );
+      if (existing != null) {
+        throw ArgumentError('You are already on the waitlist for this item.');
+      }
+
+      final count = await WaitlistEntry.db.count(
+        session,
+        where: (t) => t.itemId.equals(itemId),
+        transaction: transaction,
+      );
+      if (count >= 10) {
+        throw ArgumentError('Waitlist is full (maximum 10 entries).');
+      }
+
+      final entry = WaitlistEntry(
+        roomId: roomId,
+        itemId: itemId,
+        buyerName: trimmedName,
+        buyerToken: trimmedToken,
+        createdAt: DateTime.now().toUtc(),
+      );
+      await WaitlistEntry.db.insertRow(
+        session,
+        entry,
+        transaction: transaction,
+      );
+
+      updatedCount = count + 1;
+      position = updatedCount;
+
+      item.waitlistCount = updatedCount;
+      await Item.db.updateRow(session, item, transaction: transaction);
+    });
+
     await session.messages.postMessage(
-      'room_${updatedItem!.roomId}',
+      'room_$roomId',
       RoomEvent(
-        roomId: updatedItem!.roomId,
-        type: 'item_released',
-        item: sanitizeItem(updatedItem!),
-        message:
-            '${updatedItem!.name} hold was released by the seller and is available again!',
+        roomId: roomId,
+        type: 'waitlist_updated',
+        waitlistItemId: itemId,
+        waitlistCount: updatedCount,
+        item: null,
         timestamp: DateTime.now().toUtc(),
       ),
     );
 
-    return sanitizeItem(updatedItem!);
+    return position;
   }
+
+  /// Buyer leaves the waitlist for an item.
+  Future<bool> leaveWaitlist(
+    Session session,
+    int roomId,
+    int itemId,
+    String buyerToken,
+  ) async {
+    final trimmedToken = buyerToken.trim();
+    if (trimmedToken.isEmpty) {
+      throw ArgumentError('Invalid buyer session token.');
+    }
+
+    int remainingCount = 0;
+
+    await session.db.transaction((transaction) async {
+      await WaitlistEntry.db.deleteWhere(
+        session,
+        where: (t) =>
+            t.itemId.equals(itemId) & t.buyerToken.equals(trimmedToken),
+        transaction: transaction,
+      );
+
+      remainingCount = await WaitlistEntry.db.count(
+        session,
+        where: (t) => t.itemId.equals(itemId),
+        transaction: transaction,
+      );
+
+      final item = await Item.db.findById(
+        session,
+        itemId,
+        transaction: transaction,
+        lockMode: LockMode.forUpdate,
+      );
+      if (item != null) {
+        item.waitlistCount = remainingCount;
+        await Item.db.updateRow(session, item, transaction: transaction);
+      }
+    });
+
+    await session.messages.postMessage(
+      'room_$roomId',
+      RoomEvent(
+        roomId: roomId,
+        type: 'waitlist_updated',
+        waitlistItemId: itemId,
+        waitlistCount: remainingCount,
+        item: null,
+        timestamp: DateTime.now().toUtc(),
+      ),
+    );
+
+    return true;
+  }
+
+  /// Returns items and waitlist queue positions for the specified buyer token only.
+  Future<List<WaitlistPosition>> getMyWaitlist(
+    Session session,
+    int roomId,
+    String buyerToken,
+  ) async {
+    final trimmedToken = buyerToken.trim();
+    if (trimmedToken.isEmpty) {
+      return [];
+    }
+
+    final myEntries = await WaitlistEntry.db.find(
+      session,
+      where: (t) => t.roomId.equals(roomId) & t.buyerToken.equals(trimmedToken),
+    );
+
+    final List<WaitlistPosition> result = [];
+    for (final myEntry in myEntries) {
+      final allEntries = await WaitlistEntry.db.find(
+        session,
+        where: (t) => t.itemId.equals(myEntry.itemId),
+        orderBy: (t) => t.createdAt,
+      );
+      final idx = allEntries.indexWhere((e) => e.buyerToken == trimmedToken);
+      if (idx != -1) {
+        result.add(
+          WaitlistPosition(
+            itemId: myEntry.itemId,
+            position: idx + 1,
+          ),
+        );
+      }
+    }
+
+    return result;
+  }
+
+  Future<HoldEndResult> _endHoldAndHandOver(
+    Session session,
+    Transaction transaction,
+    Item item,
+  ) => HoldHelper.endHoldAndHandOver(session, transaction, item);
+
+  Future<void> _broadcastHoldEnd(
+    Session session,
+    HoldEndResult result,
+  ) => HoldHelper.broadcastHoldEnd(session, result);
 
   /// Generates the complete order sheet for the seller. Requires sellerKey.
   /// Aggregates all confirmed (sold) items grouped by buyer name.

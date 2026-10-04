@@ -14,5 +14,8 @@ room:
   - confirmClaim:
   - releaseClaim:
   - releaseHoldAsSeller:
+  - joinWaitlist:
+  - leaveWaitlist:
+  - getMyWaitlist:
   - getOrderSheet:
   - reportRoom:

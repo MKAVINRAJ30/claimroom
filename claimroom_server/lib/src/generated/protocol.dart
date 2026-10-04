@@ -13,6 +13,8 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:claimroom_server/src/generated/claimroom/item.dart'
     as _i24jg4ei;
+import 'package:claimroom_server/src/generated/claimroom/waitlist_position.dart'
+    as _iil6jv7h;
 import 'package:serverpod/protocol.dart' as _isp;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
@@ -26,6 +28,8 @@ import 'claimroom/order_sheet.dart' as _ihpac1yz;
 import 'claimroom/report.dart' as _ivdf4l49;
 import 'claimroom/room.dart' as _iekd0e7s;
 import 'claimroom/room_event.dart' as _ii05qs2r;
+import 'claimroom/waitlist_entry.dart' as _ibuzy8rc;
+import 'claimroom/waitlist_position.dart' as _ip2r6e33;
 import 'future_calls_generated_models/hold_expiry_future_call_expire_hold_model.dart'
     as _inu78a98;
 export 'claimroom/buyer_order_summary.dart';
@@ -35,6 +39,8 @@ export 'claimroom/order_sheet.dart';
 export 'claimroom/report.dart';
 export 'claimroom/room.dart';
 export 'claimroom/room_event.dart';
+export 'claimroom/waitlist_entry.dart';
+export 'claimroom/waitlist_position.dart';
 
 class Protocol extends _is.DatabaseSerializationManager {
   Protocol._();
@@ -147,6 +153,13 @@ class Protocol extends _is.DatabaseSerializationManager {
           columnType: _isp.ColumnType.timestampWithoutTimeZone,
           isNullable: true,
           dartType: 'DateTime?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'waitlistCount',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
+          dartType: 'int?',
+          columnDefault: '0',
         ),
       ],
       foreignKeys: [],
@@ -271,6 +284,68 @@ class Protocol extends _is.DatabaseSerializationManager {
       ],
       managed: true,
     ),
+    _isp.TableDefinition(
+      name: 'waitlist_entry',
+      dartName: 'WaitlistEntry',
+      schema: 'public',
+      module: 'claimroom',
+      columns: [
+        _isp.ColumnDefinition(
+          name: 'id',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int?',
+          columnDefault: 'serial',
+        ),
+        _isp.ColumnDefinition(
+          name: 'roomId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'itemId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: false,
+          dartType: 'int',
+        ),
+        _isp.ColumnDefinition(
+          name: 'buyerName',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'buyerToken',
+          columnType: _isp.ColumnType.text,
+          isNullable: false,
+          dartType: 'String',
+        ),
+        _isp.ColumnDefinition(
+          name: 'createdAt',
+          columnType: _isp.ColumnType.timestampWithoutTimeZone,
+          isNullable: false,
+          dartType: 'DateTime',
+        ),
+      ],
+      foreignKeys: [],
+      indexes: [
+        _isp.IndexDefinition(
+          indexName: 'waitlist_item_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'itemId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+      ],
+      managed: true,
+    ),
     ..._iais.Protocol.targetTableDefinitions,
     ..._iacs.Protocol.targetTableDefinitions,
     ..._isp.Protocol.targetTableDefinitions,
@@ -324,6 +399,12 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _ii05qs2r.RoomEvent) {
       return _ii05qs2r.RoomEvent.fromJson(data) as T;
     }
+    if (t == _ibuzy8rc.WaitlistEntry) {
+      return _ibuzy8rc.WaitlistEntry.fromJson(data) as T;
+    }
+    if (t == _ip2r6e33.WaitlistPosition) {
+      return _ip2r6e33.WaitlistPosition.fromJson(data) as T;
+    }
     if (t == _inu78a98.HoldExpiryFutureCallExpireHoldModel) {
       return _inu78a98.HoldExpiryFutureCallExpireHoldModel.fromJson(data) as T;
     }
@@ -349,6 +430,14 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _is.getType<_ii05qs2r.RoomEvent?>()) {
       return (data != null ? _ii05qs2r.RoomEvent.fromJson(data) : null) as T;
     }
+    if (t == _is.getType<_ibuzy8rc.WaitlistEntry?>()) {
+      return (data != null ? _ibuzy8rc.WaitlistEntry.fromJson(data) : null)
+          as T;
+    }
+    if (t == _is.getType<_ip2r6e33.WaitlistPosition?>()) {
+      return (data != null ? _ip2r6e33.WaitlistPosition.fromJson(data) : null)
+          as T;
+    }
     if (t == _is.getType<_inu78a98.HoldExpiryFutureCallExpireHoldModel?>()) {
       return (data != null
               ? _inu78a98.HoldExpiryFutureCallExpireHoldModel.fromJson(data)
@@ -367,6 +456,12 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == List<_i24jg4ei.Item>) {
       return (data as List).map((e) => deserialize<_i24jg4ei.Item>(e)).toList()
+          as T;
+    }
+    if (t == List<_iil6jv7h.WaitlistPosition>) {
+      return (data as List)
+              .map((e) => deserialize<_iil6jv7h.WaitlistPosition>(e))
+              .toList()
           as T;
     }
     try {
@@ -390,6 +485,8 @@ class Protocol extends _is.DatabaseSerializationManager {
       _ivdf4l49.Report => 'Report',
       _iekd0e7s.Room => 'Room',
       _ii05qs2r.RoomEvent => 'RoomEvent',
+      _ibuzy8rc.WaitlistEntry => 'WaitlistEntry',
+      _ip2r6e33.WaitlistPosition => 'WaitlistPosition',
       _inu78a98.HoldExpiryFutureCallExpireHoldModel =>
         'HoldExpiryFutureCallExpireHoldModel',
       _ => null,
@@ -420,6 +517,10 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'Room';
       case _ii05qs2r.RoomEvent():
         return 'RoomEvent';
+      case _ibuzy8rc.WaitlistEntry():
+        return 'WaitlistEntry';
+      case _ip2r6e33.WaitlistPosition():
+        return 'WaitlistPosition';
       case _inu78a98.HoldExpiryFutureCallExpireHoldModel():
         return 'HoldExpiryFutureCallExpireHoldModel';
     }
@@ -468,6 +569,12 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'RoomEvent') {
       return deserialize<_ii05qs2r.RoomEvent>(data['data']);
+    }
+    if (dataClassName == 'WaitlistEntry') {
+      return deserialize<_ibuzy8rc.WaitlistEntry>(data['data']);
+    }
+    if (dataClassName == 'WaitlistPosition') {
+      return deserialize<_ip2r6e33.WaitlistPosition>(data['data']);
     }
     if (dataClassName == 'HoldExpiryFutureCallExpireHoldModel') {
       return deserialize<_inu78a98.HoldExpiryFutureCallExpireHoldModel>(
@@ -521,6 +628,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return _ivdf4l49.Report.t;
       case _iekd0e7s.Room:
         return _iekd0e7s.Room.t;
+      case _ibuzy8rc.WaitlistEntry:
+        return _ibuzy8rc.WaitlistEntry.t;
     }
     return null;
   }

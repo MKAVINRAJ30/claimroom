@@ -21,6 +21,8 @@ import 'package:claimroom_client/src/protocol/claimroom/report.dart'
 import 'package:claimroom_client/src/protocol/claimroom/room.dart' as _if1qb44m;
 import 'package:claimroom_client/src/protocol/claimroom/room_event.dart'
     as _i0ir7zxv;
+import 'package:claimroom_client/src/protocol/claimroom/waitlist_position.dart'
+    as _if63lzm7;
 import 'package:http/http.dart' as _i85jenna;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
@@ -221,6 +223,7 @@ class EndpointRoom extends _isc.EndpointRef {
 
   /// Buyer cancels or releases a held item back to the room before expiry.
   /// Enforces token match so only the buyer session that held the item can release it.
+  /// If waitlisted buyers exist, automatically hands over to the next eligible buyer.
   _ida.Future<_i64ozq20.ClaimResult> releaseClaim(
     int itemId,
     String buyerToken,
@@ -236,6 +239,7 @@ class EndpointRoom extends _isc.EndpointRef {
   /// Seller forces the release of an abandoned hold back to the room before the 60s timer expires.
   /// Requires a valid sellerKey.
   /// Wrapped in a database transaction with LockMode.forUpdate to prevent race conditions.
+  /// If waitlisted buyers exist, automatically hands over to the next eligible buyer.
   _ida.Future<_il26i9sg.Item> releaseHoldAsSeller(
     int itemId,
     String sellerKey,
@@ -245,6 +249,52 @@ class EndpointRoom extends _isc.EndpointRef {
     {
       'itemId': itemId,
       'sellerKey': sellerKey,
+    },
+  );
+
+  /// Buyer joins the waitlist for an item currently held or sold by another buyer.
+  /// Returns the buyer's 1-indexed position in the waitlist.
+  _ida.Future<int> joinWaitlist(
+    int roomId,
+    int itemId,
+    String buyerName,
+    String buyerToken,
+  ) => caller.callServerEndpoint<int>(
+    'room',
+    'joinWaitlist',
+    {
+      'roomId': roomId,
+      'itemId': itemId,
+      'buyerName': buyerName,
+      'buyerToken': buyerToken,
+    },
+  );
+
+  /// Buyer leaves the waitlist for an item.
+  _ida.Future<bool> leaveWaitlist(
+    int roomId,
+    int itemId,
+    String buyerToken,
+  ) => caller.callServerEndpoint<bool>(
+    'room',
+    'leaveWaitlist',
+    {
+      'roomId': roomId,
+      'itemId': itemId,
+      'buyerToken': buyerToken,
+    },
+  );
+
+  /// Returns items and waitlist queue positions for the specified buyer token only.
+  _ida.Future<List<_if63lzm7.WaitlistPosition>> getMyWaitlist(
+    int roomId,
+    String buyerToken,
+  ) => caller.callServerEndpoint<List<_if63lzm7.WaitlistPosition>>(
+    'room',
+    'getMyWaitlist',
+    {
+      'roomId': roomId,
+      'buyerToken': buyerToken,
     },
   );
 

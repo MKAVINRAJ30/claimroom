@@ -1,0 +1,4 @@
+class: WaitlistPosition
+fields:
+  itemId: int
+  position: int

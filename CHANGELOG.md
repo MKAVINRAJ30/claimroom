@@ -2,6 +2,28 @@
 
 All notable changes to the ClaimRoom project are documented in this file.
 
+## [1.2.0] - 2026-10-04
+
+### Added
+- **Waitlist with Auto-Handover**:
+  - When an item is held or sold, any buyer can join the waitlist (up to 10 entries per item).
+  - When a hold ends without a sale (hold expires, buyer releases, or seller releases an abandoned hold), the earliest waitlisted buyer automatically becomes the new holder with a fresh 60-second hold and scheduled future call.
+  - Buyers who already have 3 active holds are skipped and kept in queue. If no eligible buyer exists, the item safely reverts to available.
+  - Waitlists are cleared automatically when an item is sold, deleted, or when the live sale ends.
+  - Auto-handover logic runs in the same row-locked PostgreSQL database transaction as the release or expiry sweep.
+  - Privacy: Waitlist entries are completely confidential; stream events and public item queries carry only `waitlistCount` (an integer), never buyer names or tokens.
+  - Endpoints: `joinWaitlist`, `leaveWaitlist`, and `getMyWaitlist`.
+  - Flutter UI: "Join waitlist" and "Leave waitlist" buttons with live position indicator ("You are #N in line"), waitlist count badges ("3 waiting"), and prominent turn notification banner ("🎉 It's your turn! You have 60 seconds to confirm").
+- **QR Code Join Sharing**:
+  - Added "Show QR" button next to "Copy Join Link" in the seller dashboard using `qr_flutter`.
+  - Displays a high-contrast QR code encoding the buyer join link (`$origin/?code=...`) alongside the 5-character room code in large 32pt bold text.
+  - Encodes the buyer join link only (never exposes the seller key).
+- **Two-Layer Hold Expiry**:
+  - Background `HoldExpiryFutureCall` plus locked read-sweeps on `listItems`, `getOrderSheet`, and `claimItem`.
+  - Guarantees automatic hold release and auto-handover even when Serverpod future calls are disabled (e.g. Serverpod Cloud Starter).
+- **Expanded Test Suite (25 Tests)**:
+  - Added 7 new integration tests covering waitlist auto-handover, buyer skipping on 3 holds, read-sweep handover, concurrent release/expiry idempotency, waitlist clearing on sold/endSale, waitlist caps and uniqueness, and complete privacy sanitization.
+
 ## [1.1.0] - 2026-10-01
 
 ### Added

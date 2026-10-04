@@ -16,6 +16,7 @@ fields:
   soldToContact: String?
   soldToToken: String?
   soldAt: DateTime?
+  waitlistCount: int?, default=0
 indexes:
   item_room_idx:
     fields: roomId

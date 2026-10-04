@@ -30,7 +30,9 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     this.soldToContact,
     this.soldToToken,
     this.soldAt,
-  }) : paid = paid ?? false;
+    int? waitlistCount,
+  }) : paid = paid ?? false,
+       waitlistCount = waitlistCount ?? 0;
 
   factory Item({
     int? id,
@@ -49,6 +51,7 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     String? soldToContact,
     String? soldToToken,
     DateTime? soldAt,
+    int? waitlistCount,
   }) = _ItemImpl;
 
   factory Item.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -77,6 +80,7 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       soldAt: jsonSerialization['soldAt'] == null
           ? null
           : _is.DateTimeJsonExtension.fromJson(jsonSerialization['soldAt']),
+      waitlistCount: jsonSerialization['waitlistCount'] as int?,
     );
   }
 
@@ -117,6 +121,8 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
 
   DateTime? soldAt;
 
+  int? waitlistCount;
+
   @override
   _is.Table<int?> get table => t;
 
@@ -140,6 +146,7 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
     String? soldToContact,
     String? soldToToken,
     DateTime? soldAt,
+    int? waitlistCount,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -161,6 +168,7 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       if (soldToContact != null) 'soldToContact': soldToContact,
       if (soldToToken != null) 'soldToToken': soldToToken,
       if (soldAt != null) 'soldAt': soldAt?.toJson(),
+      if (waitlistCount != null) 'waitlistCount': waitlistCount,
     };
   }
 
@@ -184,6 +192,7 @@ abstract class Item implements _is.TableRow<int?>, _is.ProtocolSerialization {
       if (soldToContact != null) 'soldToContact': soldToContact,
       if (soldToToken != null) 'soldToToken': soldToToken,
       if (soldAt != null) 'soldAt': soldAt?.toJson(),
+      if (waitlistCount != null) 'waitlistCount': waitlistCount,
     };
   }
 
@@ -235,6 +244,7 @@ class _ItemImpl extends Item {
     String? soldToContact,
     String? soldToToken,
     DateTime? soldAt,
+    int? waitlistCount,
   }) : super._(
          id: id,
          roomId: roomId,
@@ -252,6 +262,7 @@ class _ItemImpl extends Item {
          soldToContact: soldToContact,
          soldToToken: soldToToken,
          soldAt: soldAt,
+         waitlistCount: waitlistCount,
        );
 
   /// Returns a shallow copy of this [Item]
@@ -275,6 +286,7 @@ class _ItemImpl extends Item {
     Object? soldToContact = _Undefined,
     Object? soldToToken = _Undefined,
     Object? soldAt = _Undefined,
+    Object? waitlistCount = _Undefined,
   }) {
     return Item(
       id: id is int? ? id : this.id,
@@ -299,6 +311,7 @@ class _ItemImpl extends Item {
           : this.soldToContact,
       soldToToken: soldToToken is String? ? soldToToken : this.soldToToken,
       soldAt: soldAt is DateTime? ? soldAt : this.soldAt,
+      waitlistCount: waitlistCount is int? ? waitlistCount : this.waitlistCount,
     );
   }
 }
@@ -384,6 +397,11 @@ class ItemUpdateTable extends _is.UpdateTable<ItemTable> {
         table.soldAt,
         value,
       );
+
+  _is.ColumnValue<int, int> waitlistCount(int? value) => _is.ColumnValue(
+    table.waitlistCount,
+    value,
+  );
 }
 
 class ItemTable extends _is.Table<int?> {
@@ -450,6 +468,11 @@ class ItemTable extends _is.Table<int?> {
       'soldAt',
       this,
     );
+    waitlistCount = _is.ColumnInt(
+      'waitlistCount',
+      this,
+      hasDefault: true,
+    );
   }
 
   late final ItemUpdateTable updateTable;
@@ -484,6 +507,8 @@ class ItemTable extends _is.Table<int?> {
 
   late final _is.ColumnDateTime soldAt;
 
+  late final _is.ColumnInt waitlistCount;
+
   @override
   List<_is.Column> get columns => [
     id,
@@ -502,6 +527,7 @@ class ItemTable extends _is.Table<int?> {
     soldToContact,
     soldToToken,
     soldAt,
+    waitlistCount,
   ];
 }
 

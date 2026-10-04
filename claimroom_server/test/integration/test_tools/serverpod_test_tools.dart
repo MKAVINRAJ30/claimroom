@@ -25,6 +25,8 @@ import 'package:claimroom_server/src/generated/claimroom/room.dart'
     as _ih64epdi;
 import 'package:claimroom_server/src/generated/claimroom/room_event.dart'
     as _i2147zem;
+import 'package:claimroom_server/src/generated/claimroom/waitlist_position.dart'
+    as _iil6jv7h;
 import 'package:claimroom_server/src/generated/future_calls.dart' as _ibfxidep;
 import 'package:claimroom_server/src/generated/future_calls_generated_models/hold_expiry_future_call_expire_hold_model.dart'
     as _i1gj6eet;
@@ -715,6 +717,117 @@ class _RoomEndpoint {
                   _localCallContext.arguments,
                 )
                 as _ida.Future<_i24jg4ei.Item>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<int> joinWaitlist(
+    _ist.TestSessionBuilder sessionBuilder,
+    int roomId,
+    int itemId,
+    String buyerName,
+    String buyerToken,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'joinWaitlist',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'joinWaitlist',
+          parameters: _ist.testObjectToJson({
+            'roomId': roomId,
+            'itemId': itemId,
+            'buyerName': buyerName,
+            'buyerToken': buyerToken,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<int>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<bool> leaveWaitlist(
+    _ist.TestSessionBuilder sessionBuilder,
+    int roomId,
+    int itemId,
+    String buyerToken,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'leaveWaitlist',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'leaveWaitlist',
+          parameters: _ist.testObjectToJson({
+            'roomId': roomId,
+            'itemId': itemId,
+            'buyerToken': buyerToken,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<bool>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<List<_iil6jv7h.WaitlistPosition>> getMyWaitlist(
+    _ist.TestSessionBuilder sessionBuilder,
+    int roomId,
+    String buyerToken,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'room',
+            method: 'getMyWaitlist',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'room',
+          methodName: 'getMyWaitlist',
+          parameters: _ist.testObjectToJson({
+            'roomId': roomId,
+            'buyerToken': buyerToken,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<List<_iil6jv7h.WaitlistPosition>>);
         return _localReturnValue;
       } finally {
         await _localUniqueSession.close();

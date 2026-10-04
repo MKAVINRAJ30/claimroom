@@ -12,6 +12,8 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:claimroom_client/src/protocol/claimroom/item.dart' as _il26i9sg;
+import 'package:claimroom_client/src/protocol/claimroom/waitlist_position.dart'
+    as _if63lzm7;
 import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
     as _iacc;
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
@@ -24,6 +26,8 @@ import 'claimroom/order_sheet.dart' as _ihpac1yz;
 import 'claimroom/report.dart' as _ivdf4l49;
 import 'claimroom/room.dart' as _iekd0e7s;
 import 'claimroom/room_event.dart' as _ii05qs2r;
+import 'claimroom/waitlist_entry.dart' as _ibuzy8rc;
+import 'claimroom/waitlist_position.dart' as _ip2r6e33;
 export 'claimroom/buyer_order_summary.dart';
 export 'claimroom/claim_result.dart';
 export 'claimroom/item.dart';
@@ -31,6 +35,8 @@ export 'claimroom/order_sheet.dart';
 export 'claimroom/report.dart';
 export 'claimroom/room.dart';
 export 'claimroom/room_event.dart';
+export 'claimroom/waitlist_entry.dart';
+export 'claimroom/waitlist_position.dart';
 export 'client.dart';
 
 class Protocol extends _isc.SerializationManager {
@@ -88,6 +94,12 @@ class Protocol extends _isc.SerializationManager {
     if (t == _ii05qs2r.RoomEvent) {
       return _ii05qs2r.RoomEvent.fromJson(data) as T;
     }
+    if (t == _ibuzy8rc.WaitlistEntry) {
+      return _ibuzy8rc.WaitlistEntry.fromJson(data) as T;
+    }
+    if (t == _ip2r6e33.WaitlistPosition) {
+      return _ip2r6e33.WaitlistPosition.fromJson(data) as T;
+    }
     if (t == _isc.getType<_it96tugq.BuyerOrderSummary?>()) {
       return (data != null ? _it96tugq.BuyerOrderSummary.fromJson(data) : null)
           as T;
@@ -110,6 +122,14 @@ class Protocol extends _isc.SerializationManager {
     if (t == _isc.getType<_ii05qs2r.RoomEvent?>()) {
       return (data != null ? _ii05qs2r.RoomEvent.fromJson(data) : null) as T;
     }
+    if (t == _isc.getType<_ibuzy8rc.WaitlistEntry?>()) {
+      return (data != null ? _ibuzy8rc.WaitlistEntry.fromJson(data) : null)
+          as T;
+    }
+    if (t == _isc.getType<_ip2r6e33.WaitlistPosition?>()) {
+      return (data != null ? _ip2r6e33.WaitlistPosition.fromJson(data) : null)
+          as T;
+    }
     if (t == List<_idgc2c1i.Item>) {
       return (data as List).map((e) => deserialize<_idgc2c1i.Item>(e)).toList()
           as T;
@@ -122,6 +142,12 @@ class Protocol extends _isc.SerializationManager {
     }
     if (t == List<_il26i9sg.Item>) {
       return (data as List).map((e) => deserialize<_il26i9sg.Item>(e)).toList()
+          as T;
+    }
+    if (t == List<_if63lzm7.WaitlistPosition>) {
+      return (data as List)
+              .map((e) => deserialize<_if63lzm7.WaitlistPosition>(e))
+              .toList()
           as T;
     }
     try {
@@ -142,6 +168,8 @@ class Protocol extends _isc.SerializationManager {
       _ivdf4l49.Report => 'Report',
       _iekd0e7s.Room => 'Room',
       _ii05qs2r.RoomEvent => 'RoomEvent',
+      _ibuzy8rc.WaitlistEntry => 'WaitlistEntry',
+      _ip2r6e33.WaitlistPosition => 'WaitlistPosition',
       _ => null,
     };
   }
@@ -170,6 +198,10 @@ class Protocol extends _isc.SerializationManager {
         return 'Room';
       case _ii05qs2r.RoomEvent():
         return 'RoomEvent';
+      case _ibuzy8rc.WaitlistEntry():
+        return 'WaitlistEntry';
+      case _ip2r6e33.WaitlistPosition():
+        return 'WaitlistPosition';
     }
     className = _iaic.Protocol().getClassNameForObject(data);
     if (className != null) {
@@ -212,6 +244,12 @@ class Protocol extends _isc.SerializationManager {
     }
     if (dataClassName == 'RoomEvent') {
       return deserialize<_ii05qs2r.RoomEvent>(data['data']);
+    }
+    if (dataClassName == 'WaitlistEntry') {
+      return deserialize<_ibuzy8rc.WaitlistEntry>(data['data']);
+    }
+    if (dataClassName == 'WaitlistPosition') {
+      return deserialize<_ip2r6e33.WaitlistPosition>(data['data']);
     }
     if (dataClassName.startsWith('serverpod_auth_idp.')) {
       data['className'] = dataClassName.substring(19);

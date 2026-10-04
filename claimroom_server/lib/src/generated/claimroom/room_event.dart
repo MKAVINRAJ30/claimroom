@@ -22,6 +22,8 @@ abstract class RoomEvent
     this.item,
     this.message,
     required this.timestamp,
+    this.waitlistItemId,
+    this.waitlistCount,
   });
 
   factory RoomEvent({
@@ -30,6 +32,8 @@ abstract class RoomEvent
     _i5bdkz8n.Item? item,
     String? message,
     required DateTime timestamp,
+    int? waitlistItemId,
+    int? waitlistCount,
   }) = _RoomEventImpl;
 
   factory RoomEvent.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -45,6 +49,8 @@ abstract class RoomEvent
       timestamp: _is.DateTimeJsonExtension.fromJson(
         jsonSerialization['timestamp'],
       ),
+      waitlistItemId: jsonSerialization['waitlistItemId'] as int?,
+      waitlistCount: jsonSerialization['waitlistCount'] as int?,
     );
   }
 
@@ -58,6 +64,10 @@ abstract class RoomEvent
 
   DateTime timestamp;
 
+  int? waitlistItemId;
+
+  int? waitlistCount;
+
   /// Returns a shallow copy of this [RoomEvent]
   /// with some or all fields replaced by the given arguments.
   @_is.useResult
@@ -67,6 +77,8 @@ abstract class RoomEvent
     _i5bdkz8n.Item? item,
     String? message,
     DateTime? timestamp,
+    int? waitlistItemId,
+    int? waitlistCount,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -77,6 +89,8 @@ abstract class RoomEvent
       if (item != null) 'item': item?.toJson(),
       if (message != null) 'message': message,
       'timestamp': timestamp.toJson(),
+      if (waitlistItemId != null) 'waitlistItemId': waitlistItemId,
+      if (waitlistCount != null) 'waitlistCount': waitlistCount,
     };
   }
 
@@ -89,6 +103,8 @@ abstract class RoomEvent
       if (item != null) 'item': item?.toJsonForProtocol(),
       if (message != null) 'message': message,
       'timestamp': timestamp.toJson(),
+      if (waitlistItemId != null) 'waitlistItemId': waitlistItemId,
+      if (waitlistCount != null) 'waitlistCount': waitlistCount,
     };
   }
 
@@ -107,12 +123,16 @@ class _RoomEventImpl extends RoomEvent {
     _i5bdkz8n.Item? item,
     String? message,
     required DateTime timestamp,
+    int? waitlistItemId,
+    int? waitlistCount,
   }) : super._(
          roomId: roomId,
          type: type,
          item: item,
          message: message,
          timestamp: timestamp,
+         waitlistItemId: waitlistItemId,
+         waitlistCount: waitlistCount,
        );
 
   /// Returns a shallow copy of this [RoomEvent]
@@ -125,6 +145,8 @@ class _RoomEventImpl extends RoomEvent {
     Object? item = _Undefined,
     Object? message = _Undefined,
     DateTime? timestamp,
+    Object? waitlistItemId = _Undefined,
+    Object? waitlistCount = _Undefined,
   }) {
     return RoomEvent(
       roomId: roomId ?? this.roomId,
@@ -132,6 +154,10 @@ class _RoomEventImpl extends RoomEvent {
       item: item is _i5bdkz8n.Item? ? item : this.item?.copyWith(),
       message: message is String? ? message : this.message,
       timestamp: timestamp ?? this.timestamp,
+      waitlistItemId: waitlistItemId is int?
+          ? waitlistItemId
+          : this.waitlistItemId,
+      waitlistCount: waitlistCount is int? ? waitlistCount : this.waitlistCount,
     );
   }
 }
