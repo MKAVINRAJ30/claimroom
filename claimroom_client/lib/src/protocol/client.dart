@@ -160,7 +160,7 @@ class EndpointRoom extends _isc.EndpointRef {
   );
 
   /// Everyone in the room reads the current items.
-  /// Private contact fields are sanitized.
+  /// Sweeps expired holds first, then returns items with private contact fields sanitized.
   _ida.Future<List<_il26i9sg.Item>> listItems(int roomId) =>
       caller.callServerEndpoint<List<_il26i9sg.Item>>(
         'room',
