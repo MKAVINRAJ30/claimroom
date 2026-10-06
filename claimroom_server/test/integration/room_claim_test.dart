@@ -1987,6 +1987,97 @@ void main() {
           }
         },
       );
+
+      test(
+        'joinWaitlist: another buyer holds the item, a second buyer joins',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Live Drop',
+            'Ananya Thrift',
+          );
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            room.sellerKey!,
+            'Handmade Ceramic Coffee Mug',
+            399.0,
+            3,
+          );
+
+          // Buyer 1 (Akash) holds the item
+          const akashToken = 'token_akash_12345678901234';
+          final claim = await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'Akash',
+            null,
+            akashToken,
+          );
+          expect(claim.success, isTrue);
+
+          // Holder Akash cannot join waitlist for the item he holds
+          expect(
+            () => endpoints.room.joinWaitlist(
+              sessionBuilder,
+              room.id!,
+              item.id!,
+              'Akash',
+              akashToken,
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // Buyer 2 (Pranav) joins waitlist (even if sharing a browser session token)
+          final pos = await endpoints.room.joinWaitlist(
+            sessionBuilder,
+            room.id!,
+            item.id!,
+            'Pranav',
+            akashToken,
+          );
+          expect(pos, equals(1));
+
+          // Buyer 2 (Pranav) cannot join waitlist again (duplicate entry rejected)
+          expect(
+            () => endpoints.room.joinWaitlist(
+              sessionBuilder,
+              room.id!,
+              item.id!,
+              'Pranav',
+              akashToken,
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          // Buyer 3 (Rahul) joins waitlist with a fresh token -> position 2
+          const rahulToken = 'token_rahul_12345678901234';
+          final pos2 = await endpoints.room.joinWaitlist(
+            sessionBuilder,
+            room.id!,
+            item.id!,
+            'Rahul',
+            rahulToken,
+          );
+          expect(pos2, equals(2));
+
+          // When Akash releases, auto-handover gives the item to Pranav
+          final releaseResult = await endpoints.room.releaseClaim(
+            sessionBuilder,
+            item.id!,
+            akashToken,
+          );
+          expect(releaseResult.success, isTrue);
+
+          final items = await endpoints.room.listItems(
+            sessionBuilder,
+            room.id!,
+          );
+          expect(items.first.status, equals('held'));
+          expect(items.first.heldBy, equals('Pranav'));
+          expect(items.first.waitlistCount, equals(1));
+        },
+      );
     },
   );
 }

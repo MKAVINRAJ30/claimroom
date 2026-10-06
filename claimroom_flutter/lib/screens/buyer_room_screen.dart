@@ -294,9 +294,17 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
             onPressed: () {
               final name = nameCtrl.text.trim();
               if (name.isNotEmpty) {
+                final oldName = _buyerName.trim();
                 setState(() {
                   _buyerName = name;
                   _buyerContact = contactCtrl.text.trim();
+                  if (oldName.isNotEmpty && oldName != name) {
+                    _buyerToken = _generateBuyerToken();
+                    final storageKey = 'claimroom_buyer_token_${_room.id}';
+                    try {
+                      setStorageItem(storageKey, _buyerToken);
+                    } catch (_) {}
+                  }
                 });
                 Navigator.pop(ctx);
               }

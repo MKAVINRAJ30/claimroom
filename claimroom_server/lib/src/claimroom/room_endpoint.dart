@@ -882,6 +882,8 @@ class RoomEndpoint extends Endpoint {
       throw ArgumentError('Invalid buyer session token.');
     }
 
+    await _releaseExpiredHolds(session, roomId);
+
     final room = await Room.db.findById(session, roomId);
     if (room == null || !room.isOpen) {
       throw ArgumentError('The room is closed for waitlists.');
@@ -911,8 +913,13 @@ class RoomEndpoint extends Endpoint {
       final currentHolderToken = item.status == 'held'
           ? item.heldByToken
           : item.soldToToken;
+      final currentHolderName = item.status == 'held'
+          ? item.heldBy
+          : item.soldTo;
 
-      if (currentHolderToken != null && currentHolderToken == trimmedToken) {
+      if (currentHolderToken != null &&
+          currentHolderToken == trimmedToken &&
+          currentHolderName == trimmedName) {
         throw ArgumentError('You already hold or purchased this item.');
       }
 
@@ -981,6 +988,8 @@ class RoomEndpoint extends Endpoint {
     if (trimmedToken.isEmpty) {
       throw ArgumentError('Invalid buyer session token.');
     }
+
+    await _releaseExpiredHolds(session, roomId);
 
     int remainingCount = 0;
 
