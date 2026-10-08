@@ -43,6 +43,8 @@ class HoldHelper {
     WaitlistEntry? nextHolder;
 
     for (final entry in waitlistEntries) {
+      if (entry.id == null) continue;
+
       // Check active holds for this buyer token in this room
       final activeHolds = await Item.db.find(
         session,
@@ -55,21 +57,36 @@ class HoldHelper {
         transaction: transaction,
       );
 
-      if (activeHolds.length < 3) {
-        nextHolder = entry;
-        break;
+      if (activeHolds.length >= 3) {
+        // If 3 or more active holds, skip this buyer (keep them in queue)
+        continue;
       }
-      // If 3 or more active holds, skip this buyer (keep them in queue)
+
+      // Tolerate a waitlist row that was just deleted:
+      // Attempt to atomically delete this specific row from the waitlist table.
+      // If deleteWhere returns empty or throws, the row was already deleted,
+      // so tolerate it and continue to the next candidate in line.
+      List<WaitlistEntry> deleted = [];
+      try {
+        deleted = await WaitlistEntry.db.deleteWhere(
+          session,
+          where: (t) => t.id.equals(entry.id!),
+          transaction: transaction,
+        );
+      } catch (e) {
+        continue;
+      }
+
+      if (deleted.isEmpty) {
+        // Waitlist row was already deleted! Tolerate and continue to next entry.
+        continue;
+      }
+
+      nextHolder = entry;
+      break;
     }
 
     if (nextHolder != null) {
-      // Remove the winning buyer from the waitlist
-      await WaitlistEntry.db.deleteRow(
-        session,
-        nextHolder,
-        transaction: transaction,
-      );
-
       // Hand over item with a fresh 60-second hold
       final holdExpiresAt = now.add(const Duration(seconds: 60));
       item.status = 'held';

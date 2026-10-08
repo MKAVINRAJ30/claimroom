@@ -523,6 +523,9 @@ class RoomEndpoint extends Endpoint {
       await _releaseExpiredHolds(session, initialItem.roomId);
     }
 
+    bool hadDeletedWaitlist = false;
+    int remainingWaitlistCount = 0;
+
     ClaimResult result = await session.db.transaction((transaction) async {
       final item = await Item.db.findById(
         session,
@@ -601,6 +604,25 @@ class RoomEndpoint extends Endpoint {
       item.heldByToken = trimmedToken;
       item.holdExpiresAt = holdExpiresAt;
 
+      // Inside its locked transaction, delete any WaitlistEntry for the same item and the same buyer token
+      final deletedWaitlists = await WaitlistEntry.db.deleteWhere(
+        session,
+        where: (t) =>
+            t.itemId.equals(itemId) & t.buyerToken.equals(trimmedToken),
+        transaction: transaction,
+      );
+
+      final remainingWaitlist = await WaitlistEntry.db.count(
+        session,
+        where: (t) => t.itemId.equals(itemId),
+        transaction: transaction,
+      );
+      item.waitlistCount = remainingWaitlist;
+      if (deletedWaitlists.isNotEmpty) {
+        hadDeletedWaitlist = true;
+        remainingWaitlistCount = remainingWaitlist;
+      }
+
       final updated = await Item.db.updateRow(
         session,
         item,
@@ -645,6 +667,21 @@ class RoomEndpoint extends Endpoint {
           timestamp: DateTime.now().toUtc(),
         ),
       );
+
+      // 3. Broadcast waitlist_updated event if claimant had a waitlist entry
+      if (hadDeletedWaitlist) {
+        await session.messages.postMessage(
+          'room_${result.item!.roomId}',
+          RoomEvent(
+            roomId: result.item!.roomId,
+            type: 'waitlist_updated',
+            waitlistItemId: itemId,
+            waitlistCount: remainingWaitlistCount,
+            item: null,
+            timestamp: DateTime.now().toUtc(),
+          ),
+        );
+      }
     }
 
     return result;
@@ -915,18 +952,28 @@ class RoomEndpoint extends Endpoint {
         throw ArgumentError('Item not found in this room.');
       }
 
-      if (item.status != 'held' && item.status != 'sold') {
+      if (item.status == 'sold') {
+        throw ArgumentError(
+          'Cannot join waitlist for sold item. This item has already been sold.',
+        );
+      }
+
+      if (item.status == 'available') {
         throw ArgumentError(
           'Cannot join waitlist for available item. You can claim it directly.',
         );
       }
 
-      final currentHolderToken = item.status == 'held'
-          ? item.heldByToken
-          : item.soldToToken;
+      if (item.status != 'held') {
+        throw ArgumentError(
+          'Cannot join waitlist: item status is ${item.status}.',
+        );
+      }
+
+      final currentHolderToken = item.heldByToken;
 
       if (currentHolderToken != null && currentHolderToken == trimmedToken) {
-        throw ArgumentError('You already hold or purchased this item.');
+        throw ArgumentError('You already hold this item.');
       }
 
       final existing = await WaitlistEntry.db.findFirstRow(
@@ -1000,6 +1047,19 @@ class RoomEndpoint extends Endpoint {
     int remainingCount = 0;
 
     await session.db.transaction((transaction) async {
+      // 1. Lock the item row (LockMode.forUpdate) FIRST so it cannot race with a handover
+      final item = await Item.db.findById(
+        session,
+        itemId,
+        transaction: transaction,
+        lockMode: LockMode.forUpdate,
+      );
+
+      if (item == null || item.roomId != roomId) {
+        throw ArgumentError('Item not found in this room.');
+      }
+
+      // 2. Delete the waitlist entry
       await WaitlistEntry.db.deleteWhere(
         session,
         where: (t) =>
@@ -1013,16 +1073,8 @@ class RoomEndpoint extends Endpoint {
         transaction: transaction,
       );
 
-      final item = await Item.db.findById(
-        session,
-        itemId,
-        transaction: transaction,
-        lockMode: LockMode.forUpdate,
-      );
-      if (item != null) {
-        item.waitlistCount = remainingCount;
-        await Item.db.updateRow(session, item, transaction: transaction);
-      }
+      item.waitlistCount = remainingCount;
+      await Item.db.updateRow(session, item, transaction: transaction);
     });
 
     await session.messages.postMessage(

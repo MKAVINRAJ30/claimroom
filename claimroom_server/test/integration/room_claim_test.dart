@@ -1834,8 +1834,8 @@ void main() {
           );
 
           // Cannot join waitlist if holding it
-          expect(
-            () => endpoints.room.joinWaitlist(
+          await expectLater(
+            endpoints.room.joinWaitlist(
               sessionBuilder,
               room.id!,
               item.id!,
@@ -1858,8 +1858,8 @@ void main() {
           }
 
           // Duplicate entry fails
-          expect(
-            () => endpoints.room.joinWaitlist(
+          await expectLater(
+            endpoints.room.joinWaitlist(
               sessionBuilder,
               room.id!,
               item.id!,
@@ -1870,8 +1870,8 @@ void main() {
           );
 
           // 11th buyer fails (waitlist full)
-          expect(
-            () => endpoints.room.joinWaitlist(
+          await expectLater(
+            endpoints.room.joinWaitlist(
               sessionBuilder,
               room.id!,
               item.id!,
@@ -2351,6 +2351,336 @@ void main() {
             waitlistToken,
           );
           expect(myWaitlistAfterEnd, isEmpty);
+        },
+      );
+
+      test(
+        'joinWaitlist: only allows joining when status is held, rejects sold and available with clear messages',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Join Waitlist Status Test Room',
+            'SellerStatus',
+          );
+          final sellerKey = room.sellerKey!;
+
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Handcrafted Mug',
+            450.0,
+            1,
+          );
+
+          const buyer1Token = 'holder_token_status_11111111';
+          const buyer2Token = 'waitlister_token_status_22222';
+          const buyer3Token = 'waitlister_token_status_33333';
+
+          // 1. When item is available, joinWaitlist is rejected with clear message
+          try {
+            await endpoints.room.joinWaitlist(
+              sessionBuilder,
+              room.id!,
+              item.id!,
+              'Waitlister2',
+              buyer2Token,
+            );
+            fail('Expected ArgumentError when joining available item waitlist');
+          } on ArgumentError catch (e) {
+            expect(
+              e.message,
+              contains('Cannot join waitlist for available item'),
+            );
+          }
+
+          // 2. Buyer 1 claims item -> status is 'held'
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'Holder1',
+            null,
+            buyer1Token,
+          );
+
+          // Now joinWaitlist on 'held' item succeeds
+          final pos = await endpoints.room.joinWaitlist(
+            sessionBuilder,
+            room.id!,
+            item.id!,
+            'Waitlister2',
+            buyer2Token,
+          );
+          expect(pos, equals(1));
+
+          // 3. Buyer 1 confirms claim -> status becomes 'sold'
+          await endpoints.room.confirmClaim(
+            sessionBuilder,
+            item.id!,
+            buyer1Token,
+          );
+
+          // 4. Joining waitlist on 'sold' item is rejected with clear message
+          try {
+            await endpoints.room.joinWaitlist(
+              sessionBuilder,
+              room.id!,
+              item.id!,
+              'Waitlister3',
+              buyer3Token,
+            );
+            fail('Expected ArgumentError when joining sold item waitlist');
+          } on ArgumentError catch (e) {
+            expect(e.message, contains('Cannot join waitlist for sold item'));
+          }
+        },
+      );
+
+      test(
+        'claimItem: deletes any WaitlistEntry for the same item and same buyer token inside its locked transaction',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Claim Deletes Waitlist Room',
+            'SellerClaim',
+          );
+          final sellerKey = room.sellerKey!;
+
+          // Add dummy items so BuyerWL can hold 3 items to get skipped by handover
+          final item1 = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Skip Hold 1',
+            100.0,
+            1,
+          );
+          final item2 = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Skip Hold 2',
+            100.0,
+            1,
+          );
+          final item3 = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Skip Hold 3',
+            100.0,
+            1,
+          );
+          final targetItem = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Target Item',
+            750.0,
+            1,
+          );
+
+          const holderToken = 'holder_token_target_1111111';
+          const waitlistToken = 'waitlist_token_target_22222';
+
+          // BuyerWL holds 3 items
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            item1.id!,
+            'BuyerWL',
+            null,
+            waitlistToken,
+          );
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            item2.id!,
+            'BuyerWL',
+            null,
+            waitlistToken,
+          );
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            item3.id!,
+            'BuyerWL',
+            null,
+            waitlistToken,
+          );
+
+          // Another buyer holds targetItem
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            targetItem.id!,
+            'HolderTarget',
+            null,
+            holderToken,
+          );
+
+          // BuyerWL joins waitlist for targetItem
+          await endpoints.room.joinWaitlist(
+            sessionBuilder,
+            room.id!,
+            targetItem.id!,
+            'BuyerWL',
+            waitlistToken,
+          );
+
+          // HolderTarget releases targetItem
+          // Because BuyerWL has 3 active holds, handover skips BuyerWL,
+          // and targetItem becomes 'available' while BuyerWL remains in waitlist.
+          await endpoints.room.releaseClaim(
+            sessionBuilder,
+            targetItem.id!,
+            holderToken,
+          );
+
+          final sessionCheck1 = sessionBuilder.build();
+          final wlCountBefore = await WaitlistEntry.db.count(
+            sessionCheck1,
+            where: (t) =>
+                t.itemId.equals(targetItem.id!) &
+                t.buyerToken.equals(waitlistToken),
+          );
+          expect(wlCountBefore, equals(1));
+          await sessionCheck1.close();
+
+          // BuyerWL releases item1 so they now only hold 2 items
+          await endpoints.room.releaseClaim(
+            sessionBuilder,
+            item1.id!,
+            waitlistToken,
+          );
+
+          // BuyerWL claims targetItem!
+          final claimResult = await endpoints.room.claimItem(
+            sessionBuilder,
+            targetItem.id!,
+            'BuyerWL',
+            null,
+            waitlistToken,
+          );
+          expect(claimResult.success, isTrue);
+
+          // Inside the locked transaction, WaitlistEntry for (targetItem, waitlistToken) was deleted!
+          final sessionCheck2 = sessionBuilder.build();
+          final wlCountAfter = await WaitlistEntry.db.count(
+            sessionCheck2,
+            where: (t) =>
+                t.itemId.equals(targetItem.id!) &
+                t.buyerToken.equals(waitlistToken),
+          );
+          expect(wlCountAfter, equals(0));
+          await sessionCheck2.close();
+
+          // getMyWaitlist returns nothing for waitlistToken
+          final myWaitlist = await endpoints.room.getMyWaitlist(
+            sessionBuilder,
+            room.id!,
+            waitlistToken,
+          );
+          expect(myWaitlist, isEmpty);
+        },
+      );
+
+      test(
+        'leaveWaitlist locks item row first and endHoldAndHandOver tolerates a waitlist row that was just deleted',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Tolerate Deleted Waitlist Room',
+            'SellerTolerate',
+          );
+          final sellerKey = room.sellerKey!;
+
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Rare Pottery',
+            1200.0,
+            1,
+          );
+
+          const holderToken = 'holder_token_tol_11111111111';
+          const waitlistToken1 = 'waitlist_token_tol_222222222';
+          const waitlistToken2 = 'waitlist_token_tol_333333333';
+
+          // Holder claims item
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'HolderTol',
+            null,
+            holderToken,
+          );
+
+          // Waitlister 1 and 2 join
+          await endpoints.room.joinWaitlist(
+            sessionBuilder,
+            room.id!,
+            item.id!,
+            'Waitlister1',
+            waitlistToken1,
+          );
+          await endpoints.room.joinWaitlist(
+            sessionBuilder,
+            room.id!,
+            item.id!,
+            'Waitlister2',
+            waitlistToken2,
+          );
+
+          // Test leaveWaitlist: locks item row first and deletes waitlist entry
+          final left = await endpoints.room.leaveWaitlist(
+            sessionBuilder,
+            room.id!,
+            item.id!,
+            waitlistToken1,
+          );
+          expect(left, isTrue);
+
+          // Confirm waitlistToken1 row is gone from DB
+          final checkSession = sessionBuilder.build();
+          final count1 = await WaitlistEntry.db.count(
+            checkSession,
+            where: (t) =>
+                t.itemId.equals(item.id!) & t.buyerToken.equals(waitlistToken1),
+          );
+          expect(count1, equals(0));
+
+          // Simulate an already deleted row in endHoldAndHandOver:
+          // Insert a ghost waitlist entry with earlier createdAt, then delete it directly
+          final ghostEntry = await WaitlistEntry.db.insertRow(
+            checkSession,
+            WaitlistEntry(
+              roomId: room.id!,
+              itemId: item.id!,
+              buyerName: 'GhostBuyer',
+              buyerToken: 'ghost_token_999999999999999',
+              createdAt: DateTime.now().toUtc().subtract(
+                const Duration(minutes: 5),
+              ),
+            ),
+          );
+          // Delete it directly from DB so it simulates a row that vanished
+          await WaitlistEntry.db.deleteRow(checkSession, ghostEntry);
+          await checkSession.close();
+
+          // Holder releases claim: triggers endHoldAndHandOver
+          // endHoldAndHandOver must tolerate any deleted row, skip to next valid entry (Waitlister2)
+          final releaseResult = await endpoints.room.releaseClaim(
+            sessionBuilder,
+            item.id!,
+            holderToken,
+          );
+          expect(releaseResult.success, isTrue);
+
+          // Verify item was handed over to Waitlister2
+          final finalSession = sessionBuilder.build();
+          final handedOverItem = await Item.db.findById(finalSession, item.id!);
+          expect(handedOverItem!.status, equals('held'));
+          expect(handedOverItem.heldBy, equals('Waitlister2'));
+          expect(handedOverItem.heldByToken, equals(waitlistToken2));
+          await finalSession.close();
         },
       );
     },
