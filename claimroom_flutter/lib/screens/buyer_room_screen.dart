@@ -1,9 +1,8 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:claimroom_client/claimroom_client.dart';
 import '../client.dart';
-import '../utils/storage_helper.dart';
+import '../utils/buyer_token_store.dart';
 import '../widgets/countdown_timer_widget.dart';
 
 class BuyerRoomScreen extends StatefulWidget {
@@ -35,40 +34,13 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   Timer? _reconnectTimer;
   Timer? _pollingTimer;
 
-  static const _tokenChars =
-      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
-
-  String _generateBuyerToken() {
-    final rnd = Random.secure();
-    return List.generate(
-      24,
-      (_) => _tokenChars[rnd.nextInt(_tokenChars.length)],
-    ).join();
-  }
-
-  void _initBuyerToken() {
-    final storageKey = 'claimroom_buyer_token_${_room.id}';
-    String? token;
-    try {
-      token = getStorageItem(storageKey);
-    } catch (_) {}
-
-    if (token == null || token.length < 24) {
-      token = _generateBuyerToken();
-      try {
-        setStorageItem(storageKey, token);
-      } catch (_) {}
-    }
-    _buyerToken = token;
-  }
-
   @override
   void initState() {
     super.initState();
     _room = widget.room;
     _buyerName = widget.initialBuyerName ?? '';
     _buyerContact = widget.initialBuyerContact ?? '';
-    _initBuyerToken();
+    _buyerToken = BuyerTokenStore.getOrCreateToken(_room.code, _buyerName);
 
     _loadItems();
     _subscribeToRoom();
@@ -148,6 +120,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
               } else if (event.type == 'item_deleted' && event.item != null) {
                 setState(() {
                   _items.removeWhere((i) => i.id == event.item!.id);
+                  _myWaitlistPositions.remove(event.item!.id);
                 });
               } else if ((event.type == 'item_claimed' ||
                       event.type == 'item_confirmed' ||
@@ -160,6 +133,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                     _items[idx] = event.item!;
                   } else {
                     _items.add(event.item!);
+                  }
+                  if (event.item!.status == 'sold') {
+                    _myWaitlistPositions.remove(event.item!.id);
                   }
                 });
 
@@ -200,6 +176,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                       _items[idx] = _items[idx].copyWith(
                         waitlistCount: event.waitlistCount ?? 0,
                       );
+                    }
+                    if ((event.waitlistCount ?? 0) == 0) {
+                      _myWaitlistPositions.remove(event.waitlistItemId);
                     }
                   });
                 }
@@ -298,15 +277,18 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                 setState(() {
                   _buyerName = name;
                   _buyerContact = contactCtrl.text.trim();
-                  if (oldName.isNotEmpty && oldName != name) {
-                    _buyerToken = _generateBuyerToken();
-                    final storageKey = 'claimroom_buyer_token_${_room.id}';
-                    try {
-                      setStorageItem(storageKey, _buyerToken);
-                    } catch (_) {}
+                  _buyerToken = BuyerTokenStore.getOrCreateToken(
+                    _room.code,
+                    name,
+                  );
+                  if (oldName.isNotEmpty &&
+                      oldName.toLowerCase() != name.toLowerCase()) {
+                    _myWaitlistPositions.clear();
                   }
                 });
                 Navigator.pop(ctx);
+                _pollWaitlist();
+                _loadItems(isBackground: true);
               }
             },
             child: const Text('Save & Continue'),
@@ -1551,8 +1533,6 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              _buildWaitlistSection(item),
             ],
           ],
         ),
@@ -1561,6 +1541,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   }
 
   Widget _buildWaitlistSection(Item item) {
+    if (item.status == 'sold') {
+      return const SizedBox.shrink();
+    }
     final myPos = _myWaitlistPositions[item.id];
     final waitCount = item.waitlistCount ?? 0;
 

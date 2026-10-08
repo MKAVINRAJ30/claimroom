@@ -2028,13 +2028,14 @@ void main() {
             throwsA(isA<ArgumentError>()),
           );
 
-          // Buyer 2 (Pranav) joins waitlist (even if sharing a browser session token)
+          // Buyer 2 (Pranav) joins waitlist with distinct token
+          const pranavToken = 'token_pranav_12345678901234';
           final pos = await endpoints.room.joinWaitlist(
             sessionBuilder,
             room.id!,
             item.id!,
             'Pranav',
-            akashToken,
+            pranavToken,
           );
           expect(pos, equals(1));
 
@@ -2045,7 +2046,7 @@ void main() {
               room.id!,
               item.id!,
               'Pranav',
-              akashToken,
+              pranavToken,
             ),
             throwsA(isA<ArgumentError>()),
           );
@@ -2076,6 +2077,280 @@ void main() {
           expect(items.first.status, equals('held'));
           expect(items.first.heldBy, equals('Pranav'));
           expect(items.first.waitlistCount, equals(1));
+        },
+      );
+
+      test(
+        'Two different tokens: only the one that joined sees a position; getMyWaitlist for the other returns nothing',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Token Waitlist Test Room',
+            'SellerA',
+          );
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            room.sellerKey!,
+            'Silk Robe',
+            1200.0,
+            1,
+          );
+
+          const holderToken = 'holder_token_unique_111111';
+          const waitlistToken1 = 'waitlist_token_joined_222';
+          const waitlistToken2 = 'waitlist_token_other_3333';
+
+          // Holder claims item
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'HolderUser',
+            null,
+            holderToken,
+          );
+
+          // Only waitlistToken1 joins
+          final pos = await endpoints.room.joinWaitlist(
+            sessionBuilder,
+            room.id!,
+            item.id!,
+            'WaitlistUser1',
+            waitlistToken1,
+          );
+          expect(pos, equals(1));
+
+          // getMyWaitlist for waitlistToken1 returns position 1
+          final myWaitlist1 = await endpoints.room.getMyWaitlist(
+            sessionBuilder,
+            room.id!,
+            waitlistToken1,
+          );
+          expect(myWaitlist1.length, equals(1));
+          expect(myWaitlist1.first.itemId, equals(item.id));
+          expect(myWaitlist1.first.position, equals(1));
+
+          // getMyWaitlist for waitlistToken2 (did not join) returns nothing
+          final myWaitlist2 = await endpoints.room.getMyWaitlist(
+            sessionBuilder,
+            room.id!,
+            waitlistToken2,
+          );
+          expect(myWaitlist2, isEmpty);
+
+          // getMyWaitlist for holderToken returns nothing
+          final myWaitlistHolder = await endpoints.room.getMyWaitlist(
+            sessionBuilder,
+            room.id!,
+            holderToken,
+          );
+          expect(myWaitlistHolder, isEmpty);
+        },
+      );
+
+      test(
+        'After confirmClaim, the item waitlist is empty and getMyWaitlist returns nothing for it',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Confirm Claim Waitlist Room',
+            'SellerB',
+          );
+          final item = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            room.sellerKey!,
+            'Silver Bracelet',
+            800.0,
+            1,
+          );
+
+          const holderToken = 'holder_token_confirm_1111';
+          const waitlistToken = 'waitlist_token_confirm_22';
+
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            item.id!,
+            'HolderB',
+            null,
+            holderToken,
+          );
+
+          await endpoints.room.joinWaitlist(
+            sessionBuilder,
+            room.id!,
+            item.id!,
+            'WaitlisterB',
+            waitlistToken,
+          );
+
+          // Listen to stream for waitlist_updated event with count 0
+          final stream = endpoints.room.streamRoom(sessionBuilder, room.id!);
+          final events = <RoomEvent>[];
+          final sub = stream.listen(events.add);
+
+          // Holder confirms claim
+          final confirmResult = await endpoints.room.confirmClaim(
+            sessionBuilder,
+            item.id!,
+            holderToken,
+          );
+          expect(confirmResult.success, isTrue);
+
+          // Wait a tick for events
+          await Future.delayed(const Duration(milliseconds: 50));
+          await sub.cancel();
+
+          // Verify waitlist_updated event with count 0 was broadcast
+          final waitlistUpdatedEvents = events.where(
+            (e) => e.type == 'waitlist_updated' && e.waitlistItemId == item.id,
+          );
+          expect(waitlistUpdatedEvents, isNotEmpty);
+          expect(waitlistUpdatedEvents.last.waitlistCount, equals(0));
+
+          // Verify WaitlistEntry table has 0 rows for this item
+          final checkSession = sessionBuilder.build();
+          final countInDb = await WaitlistEntry.db.count(
+            checkSession,
+            where: (t) => t.itemId.equals(item.id!),
+          );
+          expect(countInDb, equals(0));
+          await checkSession.close();
+
+          // getMyWaitlist returns nothing for the waitlisted buyer
+          final myWaitlist = await endpoints.room.getMyWaitlist(
+            sessionBuilder,
+            room.id!,
+            waitlistToken,
+          );
+          expect(myWaitlist, isEmpty);
+
+          // listItems shows sold item with waitlistCount 0
+          final items = await endpoints.room.listItems(
+            sessionBuilder,
+            room.id!,
+          );
+          expect(items.first.status, equals('sold'));
+          expect(items.first.waitlistCount, equals(0));
+        },
+      );
+
+      test(
+        'endSale and deleteItem clear waitlists',
+        () async {
+          final room = await endpoints.room.createRoom(
+            sessionBuilder,
+            'Clear Waitlist Tests Room',
+            'SellerC',
+          );
+          final sellerKey = room.sellerKey!;
+
+          // 1. Test deleteItem clears waitlist entries
+          final itemToDelete = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Item To Delete',
+            300.0,
+            1,
+          );
+
+          // Insert a waitlist entry directly (simulating residual entry)
+          final directSession = sessionBuilder.build();
+          await WaitlistEntry.db.insertRow(
+            directSession,
+            WaitlistEntry(
+              roomId: room.id!,
+              itemId: itemToDelete.id!,
+              buyerName: 'GhostBuyer',
+              buyerToken: 'ghost_buyer_token_1234567',
+              createdAt: DateTime.now().toUtc(),
+            ),
+          );
+          final countBeforeDelete = await WaitlistEntry.db.count(
+            directSession,
+            where: (t) => t.itemId.equals(itemToDelete.id!),
+          );
+          expect(countBeforeDelete, equals(1));
+          await directSession.close();
+
+          // Delete item
+          final deleteResult = await endpoints.room.deleteItem(
+            sessionBuilder,
+            itemToDelete.id!,
+            sellerKey,
+          );
+          expect(deleteResult, isTrue);
+
+          final checkSession1 = sessionBuilder.build();
+          final countAfterDelete = await WaitlistEntry.db.count(
+            checkSession1,
+            where: (t) => t.itemId.equals(itemToDelete.id!),
+          );
+          expect(countAfterDelete, equals(0));
+          await checkSession1.close();
+
+          // 2. Test endSale clears waitlist for the whole room
+          final itemHeld = await endpoints.room.addItem(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+            'Held Item For EndSale',
+            600.0,
+            1,
+          );
+
+          const holderToken = 'holder_endsale_token_1111';
+          const waitlistToken = 'waitlist_endsale_token_22';
+
+          await endpoints.room.claimItem(
+            sessionBuilder,
+            itemHeld.id!,
+            'HolderC',
+            null,
+            holderToken,
+          );
+
+          await endpoints.room.joinWaitlist(
+            sessionBuilder,
+            room.id!,
+            itemHeld.id!,
+            'WaitlistC',
+            waitlistToken,
+          );
+
+          // Verify waitlist entry exists before endSale
+          final checkSession2 = sessionBuilder.build();
+          final countBeforeEndSale = await WaitlistEntry.db.count(
+            checkSession2,
+            where: (t) => t.roomId.equals(room.id!),
+          );
+          expect(countBeforeEndSale, equals(1));
+          await checkSession2.close();
+
+          // End sale
+          await endpoints.room.endSale(
+            sessionBuilder,
+            room.id!,
+            sellerKey,
+          );
+
+          // Verify all waitlist entries in the room are deleted
+          final checkSession3 = sessionBuilder.build();
+          final countAfterEndSale = await WaitlistEntry.db.count(
+            checkSession3,
+            where: (t) => t.roomId.equals(room.id!),
+          );
+          expect(countAfterEndSale, equals(0));
+          await checkSession3.close();
+
+          // getMyWaitlist returns nothing
+          final myWaitlistAfterEnd = await endpoints.room.getMyWaitlist(
+            sessionBuilder,
+            room.id!,
+            waitlistToken,
+          );
+          expect(myWaitlistAfterEnd, isEmpty);
         },
       );
     },

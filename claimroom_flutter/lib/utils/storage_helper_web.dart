@@ -13,3 +13,9 @@ void setStorageItem(String key, String value) {
     web.window.localStorage.setItem(key, value);
   } catch (_) {}
 }
+
+void clearStorage() {
+  try {
+    web.window.localStorage.clear();
+  } catch (_) {}
+}

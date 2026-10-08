@@ -263,6 +263,17 @@ class RoomEndpoint extends Endpoint {
         'room_$targetRoomId',
         RoomEvent(
           roomId: targetRoomId!,
+          type: 'waitlist_updated',
+          waitlistItemId: itemId,
+          waitlistCount: 0,
+          item: null,
+          timestamp: DateTime.now().toUtc(),
+        ),
+      );
+      await session.messages.postMessage(
+        'room_$targetRoomId',
+        RoomEvent(
+          roomId: targetRoomId!,
           type: 'item_deleted',
           item: sanitizeItem(deletedItem!),
           message: 'Item removed: ${deletedItem!.name}',
@@ -913,13 +924,8 @@ class RoomEndpoint extends Endpoint {
       final currentHolderToken = item.status == 'held'
           ? item.heldByToken
           : item.soldToToken;
-      final currentHolderName = item.status == 'held'
-          ? item.heldBy
-          : item.soldTo;
 
-      if (currentHolderToken != null &&
-          currentHolderToken == trimmedToken &&
-          currentHolderName == trimmedName) {
+      if (currentHolderToken != null && currentHolderToken == trimmedToken) {
         throw ArgumentError('You already hold or purchased this item.');
       }
 
@@ -1052,6 +1058,11 @@ class RoomEndpoint extends Endpoint {
 
     final List<WaitlistPosition> result = [];
     for (final myEntry in myEntries) {
+      final item = await Item.db.findById(session, myEntry.itemId);
+      if (item == null || item.status != 'held') {
+        continue;
+      }
+
       final allEntries = await WaitlistEntry.db.find(
         session,
         where: (t) => t.itemId.equals(myEntry.itemId),

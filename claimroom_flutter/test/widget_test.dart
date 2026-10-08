@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:claimroom_client/claimroom_client.dart';
+import 'package:claimroom_flutter/screens/buyer_room_screen.dart';
 import 'package:claimroom_flutter/screens/home_screen.dart';
 
 void main() {
@@ -35,4 +37,32 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'BuyerRoomScreen never displays waitlist or in line on a sold item',
+    (WidgetTester tester) async {
+      final room = Room(
+        id: 99,
+        code: 'TEST9',
+        title: 'Test Room',
+        sellerName: 'Seller9',
+        isOpen: true,
+        createdAt: DateTime.now().toUtc(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BuyerRoomScreen(
+            room: room,
+            initialBuyerName: 'Akash',
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(find.text('Join waitlist'), findsNothing);
+      expect(find.textContaining('in line'), findsNothing);
+    },
+  );
 }

@@ -1,3 +1,11 @@
-String? getStorageItem(String key) => null;
+final Map<String, String> _memoryStorage = {};
 
-void setStorageItem(String key, String value) {}
+String? getStorageItem(String key) => _memoryStorage[key];
+
+void setStorageItem(String key, String value) {
+  _memoryStorage[key] = value;
+}
+
+void clearStorage() {
+  _memoryStorage.clear();
+}
