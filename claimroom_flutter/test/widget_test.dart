@@ -29,6 +29,9 @@ void main() {
     expect(find.text('Enter your name'), findsOneWidget);
     expect(find.text('Priya'), findsNothing);
 
+    // Verify branding tagline
+    expect(find.text("Stop losing sales to 'mine!' comments."), findsOneWidget);
+
     // Verify buyer disclaimer notice is rendered
     expect(
       find.textContaining(
@@ -63,6 +66,44 @@ void main() {
 
       expect(find.text('Join waitlist'), findsNothing);
       expect(find.textContaining('in line'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'BuyerRoomScreen displays empty state message and renders cleanly on 360px wide screen',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final room = Room(
+        id: 99,
+        code: 'TEST9',
+        title: 'Test Room',
+        sellerName: 'Seller9',
+        isOpen: true,
+        createdAt: DateTime.now().toUtc(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BuyerRoomScreen(
+            room: room,
+            initialBuyerName: 'Akash',
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(
+        find.text('The seller is setting up. Items appear here live.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
     },
   );
 }

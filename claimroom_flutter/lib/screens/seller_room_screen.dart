@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:claimroom_client/claimroom_client.dart';
 import '../client.dart';
+import '../utils/error_helper.dart';
 import '../utils/storage_helper.dart';
 import '../widgets/countdown_timer_widget.dart';
 import 'order_sheet_screen.dart';
@@ -83,7 +84,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
       if (mounted && !isBackground) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading items: $e')),
+          SnackBar(content: Text(friendlyErrorMessage(e))),
         );
       }
     }
@@ -199,7 +200,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update room status: $e')),
+          SnackBar(content: Text(friendlyErrorMessage(e))),
         );
       }
     }
@@ -250,7 +251,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to end sale: $e')),
+          SnackBar(content: Text(friendlyErrorMessage(e))),
         );
       }
     }
@@ -366,7 +367,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to add item: $e'),
+                      content: Text(friendlyErrorMessage(e)),
                       backgroundColor: Colors.red.shade700,
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -413,7 +414,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to seed demo items: $e'),
+            content: Text(friendlyErrorMessage(e)),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),
@@ -438,7 +439,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Cannot delete: $e'),
+            content: Text(friendlyErrorMessage(e)),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),
@@ -492,7 +493,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to release hold: $e'),
+            content: Text(friendlyErrorMessage(e)),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),

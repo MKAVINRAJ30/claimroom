@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:claimroom_client/claimroom_client.dart';
 import '../client.dart';
+import '../utils/error_helper.dart';
 
 class OrderSheetScreen extends StatefulWidget {
   final int roomId;
@@ -47,7 +48,7 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = friendlyErrorMessage(e);
         _isLoading = false;
       });
     }
@@ -90,8 +91,8 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update paid status: $e'),
-            backgroundColor: Colors.red,
+            content: Text(friendlyErrorMessage(e)),
+            backgroundColor: Colors.red.shade700,
           ),
         );
       }
@@ -213,6 +214,13 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
     final sheet = _orderSheet!;
     final totalPaid = sheet.totalPaid;
     final totalUnpaid = sheet.totalUnpaid;
+    final isDark = theme.brightness == Brightness.dark;
+    final paidStatColor = isDark
+        ? const Color(0xFF34D399)
+        : const Color(0xFF047857);
+    final unpaidStatColor = isDark
+        ? const Color(0xFFFBBF24)
+        : const Color(0xFFB45309);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -280,17 +288,27 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _statTile('Sold Units', '${sheet.totalItemsSold}'),
-                          _statTile('Buyers', '${sheet.buyers.length}'),
+                          _statTile(
+                            'Sold Units',
+                            '${sheet.totalItemsSold}',
+                            isDark: isDark,
+                          ),
+                          _statTile(
+                            'Buyers',
+                            '${sheet.buyers.length}',
+                            isDark: isDark,
+                          ),
                           _statTile(
                             'Paid Total',
                             '₹${totalPaid.toStringAsFixed(0)}',
-                            color: Colors.green.shade800,
+                            color: paidStatColor,
+                            isDark: isDark,
                           ),
                           _statTile(
                             'Unpaid Total',
                             '₹${totalUnpaid.toStringAsFixed(0)}',
-                            color: Colors.amber.shade900,
+                            color: unpaidStatColor,
+                            isDark: isDark,
                           ),
                         ],
                       ),
@@ -388,7 +406,12 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
     );
   }
 
-  Widget _statTile(String label, String value, {Color? color}) {
+  Widget _statTile(
+    String label,
+    String value, {
+    Color? color,
+    required bool isDark,
+  }) {
     return Column(
       children: [
         Text(
@@ -396,19 +419,25 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: color,
+            color: color ?? (isDark ? Colors.white : Colors.black87),
           ),
         ),
         const SizedBox(height: 2),
         Text(
           label,
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+          ),
         ),
       ],
     );
   }
 
   Widget _buildBuyerCard(BuyerOrderSummary buyer, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -420,127 +449,167 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: theme.colorScheme.primary.withValues(
-                        alpha: 0.15,
-                      ),
-                      child: Text(
-                        buyer.buyerName.isNotEmpty
-                            ? buyer.buyerName[0].toUpperCase()
-                            : '?',
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
+                Expanded(
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.15,
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          buyer.buyerName,
-                          style: const TextStyle(
+                        child: Text(
+                          buyer.buyerName.isNotEmpty
+                              ? buyer.buyerName[0].toUpperCase()
+                              : '?',
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
                           ),
                         ),
-                        if (buyer.buyerContact != null &&
-                            buyer.buyerContact!.isNotEmpty)
-                          Text(
-                            buyer.buyerContact!,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              buyer.buyerName,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF111827),
+                              ),
                             ),
-                          ),
-                      ],
-                    ),
-                  ],
+                            if (buyer.buyerContact != null &&
+                                buyer.buyerContact!.isNotEmpty)
+                              Text(
+                                buyer.buyerContact!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark
+                                      ? Colors.grey.shade300
+                                      : const Color(0xFF4B5563),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 Text(
                   '₹${buyer.totalAmount.toStringAsFixed(0)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 17,
-                    color: Color(0xFF10B981),
+                    color: isDark
+                        ? const Color(0xFF34D399)
+                        : const Color(0xFF059669),
                   ),
                 ),
               ],
             ),
             const Divider(height: 20),
             ...buyer.items.map(
-              (item) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '• ${item.name}${item.quantity > 1 ? "  (x${item.quantity})" : ""}',
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ),
-                    Text(
-                      '₹${(item.price * item.quantity).toStringAsFixed(0)}',
-                      style: TextStyle(
-                        color: Colors.grey.shade800,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Clickable Paid/Unpaid badge
-                    InkWell(
-                      onTap: () => _togglePaid(item),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: item.paid
-                              ? Colors.green.shade100
-                              : Colors.amber.shade100,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: item.paid
-                                ? Colors.green.shade600
-                                : Colors.amber.shade700,
+              (item) {
+                final isPaid = item.paid;
+                // High contrast badge colors for both dark room (dark mode) and bright room (light mode)
+                final badgeBg = isPaid
+                    ? (isDark
+                          ? const Color(0xFF064E3B)
+                          : const Color(0xFFD1FAE5))
+                    : (isDark
+                          ? const Color(0xFF451A03)
+                          : const Color(0xFFFEF3C7));
+                final badgeBorder = isPaid
+                    ? (isDark
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF059669))
+                    : (isDark
+                          ? const Color(0xFFF59E0B)
+                          : const Color(0xFFD97706));
+                final badgeContent = isPaid
+                    ? (isDark
+                          ? const Color(0xFF6EE7B7)
+                          : const Color(0xFF065F46))
+                    : (isDark
+                          ? const Color(0xFFFCD34D)
+                          : const Color(0xFF92400E));
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '• ${item.name}${item.quantity > 1 ? "  (x${item.quantity})" : ""}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF1F2937),
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              item.paid
-                                  ? Icons.check_circle
-                                  : Icons.hourglass_top,
-                              size: 13,
-                              color: item.paid
-                                  ? Colors.green.shade800
-                                  : Colors.amber.shade900,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              item.paid ? 'PAID' : 'UNPAID',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: item.paid
-                                    ? Colors.green.shade800
-                                    : Colors.amber.shade900,
-                              ),
-                            ),
-                          ],
+                      ),
+                      Text(
+                        '₹${(item.price * item.quantity).toStringAsFixed(0)}',
+                        style: TextStyle(
+                          color: isDark
+                              ? Colors.grey.shade100
+                              : const Color(0xFF111827),
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                      const SizedBox(width: 12),
+                      // Clickable Paid/Unpaid badge (Green check vs Amber hourglass)
+                      InkWell(
+                        onTap: () => _togglePaid(item),
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: badgeBorder,
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPaid
+                                    ? Icons.check_circle_rounded
+                                    : Icons.hourglass_top_rounded,
+                                size: 15,
+                                color: badgeContent,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                isPaid ? 'PAID' : 'UNPAID',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                  color: badgeContent,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ],
         ),

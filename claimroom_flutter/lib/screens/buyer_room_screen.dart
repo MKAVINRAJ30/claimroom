@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:claimroom_client/claimroom_client.dart';
 import '../client.dart';
 import '../utils/buyer_token_store.dart';
+import '../utils/error_helper.dart';
 import '../widgets/countdown_timer_widget.dart';
 
 class BuyerRoomScreen extends StatefulWidget {
@@ -30,6 +31,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   String _buyerName = '';
   String _buyerContact = '';
   Map<int, int> _myWaitlistPositions = {};
+  final Set<int> _claimingItemIds = {};
+  final Set<int> _confirmingItemIds = {};
+  final Set<int> _waitlistActionItemIds = {};
   StreamSubscription<RoomEvent>? _streamSub;
   Timer? _reconnectTimer;
   Timer? _pollingTimer;
@@ -304,6 +308,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
       if (_buyerName.isEmpty) return;
     }
 
+    if (_claimingItemIds.contains(item.id)) return;
+    setState(() => _claimingItemIds.add(item.id!));
+
     try {
       final result = await client.room.claimItem(
         item.id!,
@@ -337,13 +344,24 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error claiming item: $e')),
+          SnackBar(
+            content: Text(friendlyErrorMessage(e)),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _claimingItemIds.remove(item.id!));
       }
     }
   }
 
   Future<void> _confirmClaim(Item item) async {
+    if (_confirmingItemIds.contains(item.id)) return;
+    setState(() => _confirmingItemIds.add(item.id!));
+
     try {
       final result = await client.room.confirmClaim(item.id!, _buyerToken);
       if (mounted) {
@@ -365,8 +383,16 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error confirming: $e')),
+          SnackBar(
+            content: Text(friendlyErrorMessage(e)),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _confirmingItemIds.remove(item.id!));
       }
     }
   }
@@ -386,7 +412,11 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error releasing: $e')),
+          SnackBar(
+            content: Text(friendlyErrorMessage(e)),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     }
@@ -397,6 +427,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
       await _promptBuyerIdentity();
       if (_buyerName.isEmpty) return;
     }
+
+    if (_waitlistActionItemIds.contains(item.id)) return;
+    setState(() => _waitlistActionItemIds.add(item.id!));
 
     try {
       final pos = await client.room.joinWaitlist(
@@ -424,16 +457,23 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error joining waitlist: $e'),
+            content: Text(friendlyErrorMessage(e)),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _waitlistActionItemIds.remove(item.id!));
+      }
     }
   }
 
   Future<void> _leaveWaitlist(Item item) async {
+    if (_waitlistActionItemIds.contains(item.id)) return;
+    setState(() => _waitlistActionItemIds.add(item.id!));
+
     try {
       await client.room.leaveWaitlist(_room.id!, item.id!, _buyerToken);
       if (mounted) {
@@ -452,11 +492,15 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error leaving waitlist: $e'),
+            content: Text(friendlyErrorMessage(e)),
             backgroundColor: Colors.red.shade700,
             behavior: SnackBarBehavior.floating,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _waitlistActionItemIds.remove(item.id!));
       }
     }
   }
@@ -542,7 +586,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Failed to submit report: $e'),
+                      content: Text(friendlyErrorMessage(e)),
                       backgroundColor: Colors.red.shade700,
                       behavior: SnackBarBehavior.floating,
                     ),
@@ -853,9 +897,10 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(_room.title),
+            Text(_room.title, overflow: TextOverflow.ellipsis),
             Text(
               'by ${_room.sellerName} • ${_formatDateTime(_room.createdAt)}',
+              overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 fontSize: 11,
@@ -946,12 +991,15 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              Text(
-                                'Reconnecting to live room stream...',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.amber.shade900,
-                                  fontWeight: FontWeight.bold,
+                              Flexible(
+                                child: Text(
+                                  'Reconnecting to live room stream...',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.amber.shade900,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
@@ -1066,12 +1114,15 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Live Products (${_items.length})',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
+                          Expanded(
+                            child: Text(
+                              'Live Products (${_items.length})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
@@ -1084,6 +1135,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Container(
                                   width: 8,
@@ -1160,7 +1212,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                             padding: EdgeInsets.all(40),
                             child: Center(
                               child: Text(
-                                'The seller hasn\'t dropped any items yet.\nStay tuned, items will appear live here!',
+                                'The seller is setting up. Items appear here live.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(color: Colors.grey),
                               ),
@@ -1196,32 +1248,36 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'My Items: $myClaimCount (${myHeldItems.length} held, ${mySoldItems.length} confirmed)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade700,
-                            fontWeight: FontWeight.w600,
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'My Items: $myClaimCount (${myHeldItems.length} held, ${mySoldItems.length} confirmed)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'Running Total: ₹${myRunningTotal.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF10B981),
+                          Text(
+                            'Running Total: ₹${myRunningTotal.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF10B981),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    const SizedBox(width: 8),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6366F1),
                         foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 44),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 10,
@@ -1334,32 +1390,51 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
             const SizedBox(height: 12),
 
             // Item Status & Actions
-            if (item.status == 'available')
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.flash_on),
-                  label: Text(
-                    _room.isOpen ? 'CLAIM NOW' : 'SALE CLOSED',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
+            if (item.status == 'available') ...[
+              Builder(
+                builder: (context) {
+                  final isClaiming = _claimingItemIds.contains(item.id);
+                  return SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      icon: isClaiming
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.flash_on),
+                      label: Text(
+                        isClaiming
+                            ? 'CLAIMING...'
+                            : (_room.isOpen ? 'CLAIM NOW' : 'SALE CLOSED'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _room.isOpen
+                            ? const Color(0xFF6366F1)
+                            : Colors.grey,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size.fromHeight(48),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: (_room.isOpen && !isClaiming)
+                          ? () => _claimItem(item)
+                          : null,
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _room.isOpen
-                        ? const Color(0xFF6366F1)
-                        : Colors.grey,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: _room.isOpen ? () => _claimItem(item) : null,
-                ),
-              )
-            else if (isHeldByMe)
+                  );
+                },
+              ),
+            ] else if (isHeldByMe) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -1388,8 +1463,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                         ),
                       ),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const Icon(
                           Icons.timer,
@@ -1416,48 +1492,74 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF10B981),
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 12,
+                    Builder(
+                      builder: (context) {
+                        final isConfirming = _confirmingItemIds.contains(
+                          item.id,
+                        );
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF10B981),
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size(0, 48),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                                onPressed: isConfirming
+                                    ? null
+                                    : () => _confirmClaim(item),
+                                child: isConfirming
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Text('CONFIRM CLAIM'),
                               ),
                             ),
-                            onPressed: () => _confirmClaim(item),
-                            child: const Text('CONFIRM CLAIM'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            side: const BorderSide(color: Colors.red),
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 12,
+                            const SizedBox(width: 8),
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                side: const BorderSide(color: Colors.red),
+                                minimumSize: const Size(0, 48),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                              onPressed: isConfirming
+                                  ? null
+                                  : () => _releaseClaim(item),
+                              child: const Text('RELEASE'),
                             ),
-                          ),
-                          onPressed: () => _releaseClaim(item),
-                          child: const Text('RELEASE'),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),
-              )
-            else if (item.status == 'held') ...[
+              ),
+            ] else if (item.status == 'held') ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.amber.shade50,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     const Icon(
                       Icons.lock_clock,
@@ -1478,6 +1580,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                       style: const TextStyle(
                         color: Color(0xFFD97706),
                         fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                     const Text(
@@ -1492,7 +1595,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
               ),
               const SizedBox(height: 8),
               _buildWaitlistSection(item),
-            ] else if (isSoldToMe)
+            ] else if (isSoldToMe) ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1500,8 +1603,9 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   color: const Color(0xFFD1FAE5),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                child: const Wrap(
+                  alignment: WrapAlignment.center,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Icon(Icons.check_circle, color: Color(0xFF10B981)),
                     SizedBox(width: 8),
@@ -1514,8 +1618,8 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                     ),
                   ],
                 ),
-              )
-            else ...[
+              ),
+            ] else ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1546,6 +1650,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
     }
     final myPos = _myWaitlistPositions[item.id];
     final waitCount = item.waitlistCount ?? 0;
+    final isWaitlistAction = _waitlistActionItemIds.contains(item.id);
 
     if (myPos != null) {
       return Container(
@@ -1577,14 +1682,19 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   horizontal: 10,
                   vertical: 4,
                 ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                minimumSize: const Size(0, 44),
               ),
-              onPressed: () => _leaveWaitlist(item),
-              child: const Text(
-                'Leave waitlist',
-                style: TextStyle(fontSize: 12),
-              ),
+              onPressed: isWaitlistAction ? null : () => _leaveWaitlist(item),
+              child: isWaitlistAction
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text(
+                      'Leave waitlist',
+                      style: TextStyle(fontSize: 12),
+                    ),
             ),
           ],
         ),
@@ -1614,17 +1724,26 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
         ],
         Expanded(
           child: OutlinedButton.icon(
-            icon: const Icon(Icons.queue, size: 16),
-            label: const Text('Join waitlist'),
+            icon: isWaitlistAction
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.queue, size: 16),
+            label: Text(isWaitlistAction ? 'Joining...' : 'Join waitlist'),
             style: OutlinedButton.styleFrom(
               foregroundColor: const Color(0xFF4338CA),
               side: const BorderSide(color: Color(0xFF818CF8)),
+              minimumSize: const Size(0, 44),
               padding: const EdgeInsets.symmetric(vertical: 10),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
-            onPressed: _room.isOpen ? () => _joinWaitlist(item) : null,
+            onPressed: (_room.isOpen && !isWaitlistAction)
+                ? () => _joinWaitlist(item)
+                : null,
           ),
         ),
       ],

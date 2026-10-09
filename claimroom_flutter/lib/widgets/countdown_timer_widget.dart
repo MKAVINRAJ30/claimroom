@@ -80,6 +80,7 @@ class _CountdownTimerWidgetState extends State<CountdownTimerWidget> {
       style:
           widget.style ??
           TextStyle(
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             color: defaultColor,
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../client.dart';
+import '../utils/error_helper.dart';
 import '../utils/storage_helper.dart';
 import 'seller_room_screen.dart';
 import 'buyer_room_screen.dart';
@@ -220,7 +221,7 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() => _isCreatingRoom = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to create room: $e'),
+            content: Text(friendlyErrorMessage(e)),
             backgroundColor: Colors.red.shade700,
           ),
         );
@@ -286,7 +287,7 @@ class _HomeScreenState extends State<HomeScreen>
         setState(() => _isRejoiningAsSeller = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Invalid Seller Key or Room Code: $e'),
+            content: Text(friendlyErrorMessage(e)),
             backgroundColor: Colors.red,
           ),
         );
@@ -332,7 +333,10 @@ class _HomeScreenState extends State<HomeScreen>
       if (mounted) {
         setState(() => _isJoiningRoom = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error joining room: $e')),
+          SnackBar(
+            content: Text(friendlyErrorMessage(e)),
+            backgroundColor: Colors.red.shade700,
+          ),
         );
       }
     }
@@ -379,7 +383,7 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Zero Double-Sells. Zero Lost Orders.\nReal-time claim sales for Instagram & WhatsApp sellers.',
+                    "Stop losing sales to 'mine!' comments.",
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.grey.shade600,
