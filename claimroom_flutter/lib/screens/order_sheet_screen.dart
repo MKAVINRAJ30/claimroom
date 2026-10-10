@@ -222,6 +222,29 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
         ? const Color(0xFFFBBF24)
         : const Color(0xFFB45309);
 
+    DateTime? earliestSoldAt;
+    for (final buyer in sheet.buyers) {
+      for (final item in buyer.items) {
+        if (item.soldAt != null) {
+          if (earliestSoldAt == null || item.soldAt!.isBefore(earliestSoldAt)) {
+            earliestSoldAt = item.soldAt;
+          }
+        }
+      }
+    }
+
+    String durationStr = '< 1 min';
+    if (earliestSoldAt != null) {
+      final diff = sheet.generatedAt.difference(earliestSoldAt);
+      if (diff.inHours >= 1) {
+        durationStr = '${diff.inHours}h ${diff.inMinutes.remainder(60)}m';
+      } else if (diff.inMinutes >= 1) {
+        durationStr = '${diff.inMinutes}m';
+      } else {
+        durationStr = '${diff.inSeconds}s';
+      }
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Center(
@@ -230,7 +253,7 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Summary Banner Card
+              // Top Recap Card
               Card(
                 elevation: 3,
                 shape: RoundedRectangleBorder(
@@ -240,29 +263,38 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(20),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                sheet.roomTitle,
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.colorScheme.onPrimaryContainer,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  sheet.roomTitle,
+                                  style: theme.textTheme.headlineSmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: theme
+                                            .colorScheme
+                                            .onPrimaryContainer,
+                                      ),
                                 ),
-                              ),
-                              Text(
-                                'Seller: ${sheet.sellerName}',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onPrimaryContainer
-                                      .withValues(alpha: 0.8),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Seller: ${sheet.sellerName}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onPrimaryContainer
+                                        .withValues(alpha: 0.8),
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 14,
@@ -284,30 +316,37 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                         ],
                       ),
                       const Divider(height: 28),
-                      // KPI Metrics Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      // Recap Metrics Grid
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        alignment: WrapAlignment.spaceAround,
                         children: [
                           _statTile(
-                            'Sold Units',
-                            '${sheet.totalItemsSold}',
+                            'Items Sold',
+                            '${sheet.totalItemsSold} of ${sheet.totalItems}',
                             isDark: isDark,
                           ),
                           _statTile(
-                            'Buyers',
-                            '${sheet.buyers.length}',
+                            'Total Revenue',
+                            '₹${sheet.grandTotal.toStringAsFixed(0)}',
+                            color: const Color(0xFF10B981),
                             isDark: isDark,
                           ),
                           _statTile(
-                            'Paid Total',
-                            '₹${totalPaid.toStringAsFixed(0)}',
-                            color: paidStatColor,
+                            'Paid vs Unpaid',
+                            '₹${totalPaid.toStringAsFixed(0)} / ₹${totalUnpaid.toStringAsFixed(0)}',
+                            color: totalUnpaid > 0
+                                ? unpaidStatColor
+                                : paidStatColor,
                             isDark: isDark,
                           ),
                           _statTile(
-                            'Unpaid Total',
-                            '₹${totalUnpaid.toStringAsFixed(0)}',
-                            color: unpaidStatColor,
+                            'Sale Duration',
+                            durationStr,
+                            color: isDark
+                                ? const Color(0xFF818CF8)
+                                : const Color(0xFF4F46E5),
                             isDark: isDark,
                           ),
                         ],
@@ -325,6 +364,7 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF25D366),
                               foregroundColor: Colors.white,
+                              minimumSize: const Size(0, 44),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 18,
                                 vertical: 12,
@@ -346,6 +386,7 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF0284C7),
                               foregroundColor: Colors.white,
+                              minimumSize: const Size(0, 44),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 18,
                                 vertical: 12,

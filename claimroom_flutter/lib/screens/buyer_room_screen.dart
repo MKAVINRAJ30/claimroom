@@ -5,6 +5,8 @@ import '../client.dart';
 import '../utils/buyer_token_store.dart';
 import '../utils/error_helper.dart';
 import '../widgets/countdown_timer_widget.dart';
+import '../theme/app_theme.dart';
+import '../widgets/celebration_widget.dart';
 
 class BuyerRoomScreen extends StatefulWidget {
   final Room room;
@@ -34,6 +36,8 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
   final Set<int> _claimingItemIds = {};
   final Set<int> _confirmingItemIds = {};
   final Set<int> _waitlistActionItemIds = {};
+  final GlobalKey<CelebrationOverlayState> _celebrationKey =
+      GlobalKey<CelebrationOverlayState>();
   StreamSubscription<RoomEvent>? _streamSub;
   Timer? _reconnectTimer;
   Timer? _pollingTimer;
@@ -149,6 +153,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                   if (heldBy != null &&
                       trimmed.isNotEmpty &&
                       heldBy == trimmed) {
+                    _celebrationKey.currentState?.triggerCelebration();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
@@ -366,6 +371,7 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
       final result = await client.room.confirmClaim(item.id!, _buyerToken);
       if (mounted) {
         if (result.success) {
+          _celebrationKey.currentState?.triggerCelebration();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('✅ Confirmed! ${item.name} is yours.'),
@@ -956,218 +962,62 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 800),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Reconnecting indicator if stream dropped
-                      if (_isReconnecting)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.amber.shade400),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.amber.shade900,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Flexible(
-                                child: Text(
-                                  'Reconnecting to live room stream...',
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.amber.shade900,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      // Feature E: Prominent Sale Ended Banner
-                      if (!_room.isOpen) _buildSaleEndedBanner(theme),
-
-                      // Room Info Card: Seller name, creation time, and Report button
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.4),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.storefront,
-                              size: 20,
-                              color: Color(0xFF6366F1),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Seller: ${_room.sellerName}',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Created: ${_formatDateTime(_room.createdAt)} • Code: ${_room.code}',
-                                    style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            TextButton.icon(
-                              icon: const Icon(
-                                Icons.flag_outlined,
-                                size: 14,
-                                color: Colors.redAccent,
-                              ),
-                              label: const Text(
-                                'Report',
-                                style: TextStyle(
-                                  color: Colors.redAccent,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              onPressed: _showReportRoomDialog,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Buyer identity bar
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withAlpha(128),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.account_circle,
-                              color: Color(0xFF6366F1),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _buyerName.isNotEmpty
-                                    ? 'Claiming as: $_buyerName ${_buyerContact.isNotEmpty ? "($_buyerContact)" : ""}'
-                                    : 'Set your name before claiming',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: _promptBuyerIdentity,
-                              child: Text(
-                                _buyerName.isNotEmpty ? 'Edit' : 'Set Name',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Live Products (${_items.length})',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
+      body: CelebrationOverlay(
+        overlayKey: _celebrationKey,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 800),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Reconnecting indicator if stream dropped
+                        if (_isReconnecting)
                           Container(
+                            margin: const EdgeInsets.only(bottom: 12),
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
+                              horizontal: 14,
+                              vertical: 8,
                             ),
                             decoration: BoxDecoration(
-                              color: _room.isOpen
-                                  ? const Color(0xFF10B981).withAlpha(38)
-                                  : Colors.red.withAlpha(38),
-                              borderRadius: BorderRadius.circular(12),
+                              color: Colors.amber.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.amber.shade400),
                             ),
                             child: Row(
-                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: _room.isOpen
-                                        ? const Color(0xFF10B981)
-                                        : Colors.red,
+                                SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.amber.shade900,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _room.isOpen ? 'LIVE SALE' : 'SALE ENDED',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    color: _room.isOpen
-                                        ? const Color(0xFF10B981)
-                                        : Colors.red.shade700,
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    'Reconnecting to live room stream...',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.amber.shade900,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
 
-                      const SizedBox(height: 12),
+                        // Feature E: Prominent Sale Ended Banner
+                        if (!_room.isOpen) _buildSaleEndedBanner(theme),
 
-                      if (_items.isNotEmpty &&
-                          !_items.any((i) => i.status == 'available'))
+                        // Room Info Card: Seller name, creation time, and Report button
                         Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.symmetric(
@@ -1175,59 +1025,220 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
                             vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF3E8FF),
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: const Color(0xFFD8B4FE)),
+                            border: Border.all(color: Colors.grey.shade300),
                           ),
                           child: Row(
                             children: [
                               const Icon(
-                                Icons.check_circle,
-                                color: Color(0xFF8B5CF6),
+                                Icons.storefront,
                                 size: 20,
+                                color: Color(0xFF6366F1),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Seller: ${_room.sellerName}',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Created: ${_formatDateTime(_room.createdAt)} • Code: ${_room.code}',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton.icon(
+                                icon: const Icon(
+                                  Icons.flag_outlined,
+                                  size: 14,
+                                  color: Colors.redAccent,
+                                ),
+                                label: const Text(
+                                  'Report',
+                                  style: TextStyle(
+                                    color: Colors.redAccent,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                onPressed: _showReportRoomDialog,
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Buyer identity bar
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withAlpha(128),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.account_circle,
+                                color: Color(0xFF6366F1),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  _items.every((i) => i.status == 'sold')
-                                      ? 'All items sold! Every product in this room has been purchased.'
-                                      : 'All available items are currently held or sold.',
+                                  _buyerName.isNotEmpty
+                                      ? 'Claiming as: $_buyerName ${_buyerContact.isNotEmpty ? "($_buyerContact)" : ""}'
+                                      : 'Set your name before claiming',
                                   style: const TextStyle(
-                                    color: Color(0xFF6B21A8),
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 13,
                                   ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _promptBuyerIdentity,
+                                child: Text(
+                                  _buyerName.isNotEmpty ? 'Edit' : 'Set Name',
                                 ),
                               ),
                             ],
                           ),
                         ),
 
-                      if (_items.isEmpty)
-                        Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Padding(
-                            padding: EdgeInsets.all(40),
-                            child: Center(
+                        const SizedBox(height: 16),
+
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
                               child: Text(
-                                'The seller is setting up. Items appear here live.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.grey),
+                                'Live Products (${_items.length})',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                        )
-                      else
-                        ..._items.map(
-                          (item) => _buildBuyerItemCard(item, theme),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _room.isOpen
+                                    ? const Color(0xFF10B981).withAlpha(38)
+                                    : Colors.red.withAlpha(38),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: _room.isOpen
+                                          ? const Color(0xFF10B981)
+                                          : Colors.red,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _room.isOpen ? 'LIVE SALE' : 'SALE ENDED',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: _room.isOpen
+                                          ? const Color(0xFF10B981)
+                                          : Colors.red.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                    ],
+
+                        const SizedBox(height: 12),
+
+                        if (_items.isNotEmpty &&
+                            !_items.any((i) => i.status == 'available'))
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF3E8FF),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: const Color(0xFFD8B4FE),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.check_circle,
+                                  color: Color(0xFF8B5CF6),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _items.every((i) => i.status == 'sold')
+                                        ? 'All items sold! Every product in this room has been purchased.'
+                                        : 'All available items are currently held or sold.',
+                                    style: const TextStyle(
+                                      color: Color(0xFF6B21A8),
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                        if (_items.isEmpty)
+                          Card(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.all(40),
+                              child: Center(
+                                child: Text(
+                                  'The seller is setting up. Items appear here live.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ..._items.map(
+                            (item) => _buildBuyerItemCard(item, theme),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+      ),
       bottomNavigationBar: (trimmedBuyer.isNotEmpty && myClaimCount > 0)
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1312,7 +1323,6 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
         (item.soldTo == _buyerName ||
             (trimmedBuyer.isNotEmpty && item.soldTo == trimmedBuyer));
     final totalPrice = item.price * item.quantity;
-    final qtySuffix = item.quantity > 1 ? ' (x${item.quantity})' : '';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
@@ -1333,54 +1343,54 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        item.imageUrl!,
-                        width: 54,
-                        height: 54,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          width: 54,
-                          height: 54,
-                          color: Colors.grey.shade200,
-                          child: const Icon(
-                            Icons.image_not_supported,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: ItemImageTile(imageUrl: item.imageUrl, size: 60),
+                ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        '${item.name}$qtySuffix',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (item.quantity > 1)
-                        Text(
-                          '₹${item.price.toStringAsFixed(0)} each',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          ItemStatusChip(status: item.status),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          ItemQuantityChip(quantity: item.quantity),
+                          if (item.quantity > 1)
+                            Text(
+                              '₹${item.price.toStringAsFixed(0)} each',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
                 Text(
                   '₹${totalPrice.toStringAsFixed(0)}',
                   style: const TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF10B981),
                   ),
@@ -1389,259 +1399,287 @@ class _BuyerRoomScreenState extends State<BuyerRoomScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Item Status & Actions
-            if (item.status == 'available') ...[
-              Builder(
-                builder: (context) {
-                  final isClaiming = _claimingItemIds.contains(item.id);
-                  return SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: isClaiming
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.flash_on),
-                      label: Text(
-                        isClaiming
-                            ? 'CLAIMING...'
-                            : (_room.isOpen ? 'CLAIM NOW' : 'SALE CLOSED'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _room.isOpen
-                            ? const Color(0xFF6366F1)
-                            : Colors.grey,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(48),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: (_room.isOpen && !isClaiming)
-                          ? () => _claimItem(item)
-                          : null,
-                    ),
-                  );
-                },
-              ),
-            ] else if (isHeldByMe) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(10),
+            // Item Status & Actions with 250ms state transition animation
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: KeyedSubtree(
+                key: ValueKey(
+                  '${item.id}_${item.status}_${isHeldByMe}_$isSoldToMe',
                 ),
-                child: Column(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFD1FAE5),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: const Color(0xFF10B981)),
-                      ),
-                      child: const Text(
-                        "🎉 It's your turn! You have 60 seconds to confirm",
-                        style: TextStyle(
-                          color: Color(0xFF065F46),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.timer,
-                          color: Color(0xFFD97706),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'HELD FOR YOU: ',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFD97706),
-                          ),
-                        ),
-                        CountdownTimerWidget(
-                          expiresAt: item.holdExpiresAt,
-                          onExpired: () => _loadItems(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFFD97706),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Builder(
-                      builder: (context) {
-                        final isConfirming = _confirmingItemIds.contains(
-                          item.id,
-                        );
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF10B981),
-                                  foregroundColor: Colors.white,
-                                  minimumSize: const Size(0, 48),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                ),
-                                onPressed: isConfirming
-                                    ? null
-                                    : () => _confirmClaim(item),
-                                child: isConfirming
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Text('CONFIRM CLAIM'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.red,
-                                side: const BorderSide(color: Colors.red),
-                                minimumSize: const Size(0, 48),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                              ),
-                              onPressed: isConfirming
-                                  ? null
-                                  : () => _releaseClaim(item),
-                              child: const Text('RELEASE'),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
+                child: _buildBuyerItemAction(
+                  item,
+                  isHeldByMe,
+                  isSoldToMe,
+                  theme,
                 ),
               ),
-            ] else if (item.status == 'held') ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.amber.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.lock_clock,
-                      size: 18,
-                      color: Color(0xFFD97706),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Held by ${item.heldBy ?? "another buyer"} (',
-                      style: const TextStyle(
-                        color: Color(0xFFD97706),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    CountdownTimerWidget(
-                      expiresAt: item.holdExpiresAt,
-                      onExpired: () => _loadItems(),
-                      style: const TextStyle(
-                        color: Color(0xFFD97706),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const Text(
-                      ')',
-                      style: TextStyle(
-                        color: Color(0xFFD97706),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              _buildWaitlistSection(item),
-            ] else if (isSoldToMe) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD1FAE5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Wrap(
-                  alignment: WrapAlignment.center,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Icon(Icons.check_circle, color: Color(0xFF10B981)),
-                    SizedBox(width: 8),
-                    Text(
-                      'YOU BOUGHT THIS ITEM! 🎉',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF065F46),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: Text(
-                    'SOLD to ${item.soldTo ?? "buyer"}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ],
         ),
       ),
     );
+  }
+
+  Widget _buildBuyerItemAction(
+    Item item,
+    bool isHeldByMe,
+    bool isSoldToMe,
+    ThemeData theme,
+  ) {
+    if (item.status == 'available') {
+      return Builder(
+        builder: (context) {
+          final isClaiming = _claimingItemIds.contains(item.id);
+          return SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              icon: isClaiming
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.flash_on),
+              label: Text(
+                isClaiming
+                    ? 'CLAIMING...'
+                    : (_room.isOpen ? 'CLAIM NOW' : 'SALE CLOSED'),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _room.isOpen
+                    ? const Color(0xFF6366F1)
+                    : Colors.grey,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: (_room.isOpen && !isClaiming)
+                  ? () => _claimItem(item)
+                  : null,
+            ),
+          );
+        },
+      );
+    } else if (isHeldByMe) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF3C7),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            CelebratoryPulse(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD1FAE5),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF10B981)),
+                ),
+                child: const Text(
+                  "🎉 It's your turn! You have 60 seconds to confirm",
+                  style: TextStyle(
+                    color: Color(0xFF065F46),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Icon(
+                  Icons.timer,
+                  color: Color(0xFFD97706),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'HELD FOR YOU: ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFD97706),
+                  ),
+                ),
+                CountdownTimerWidget(
+                  expiresAt: item.holdExpiresAt,
+                  onExpired: () => _loadItems(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFFD97706),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Builder(
+              builder: (context) {
+                final isConfirming = _confirmingItemIds.contains(
+                  item.id,
+                );
+                return Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(0, 48),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                        ),
+                        onPressed: isConfirming
+                            ? null
+                            : () => _confirmClaim(item),
+                        child: isConfirming
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text('CONFIRM CLAIM'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        minimumSize: const Size(0, 48),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                        ),
+                      ),
+                      onPressed: isConfirming
+                          ? null
+                          : () => _releaseClaim(item),
+                      child: const Text('RELEASE'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    } else if (item.status == 'held') {
+      return Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              vertical: 12,
+              horizontal: 8,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const Icon(
+                  Icons.lock_clock,
+                  size: 18,
+                  color: Color(0xFFD97706),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Held by ${item.heldBy ?? "another buyer"} (',
+                  style: const TextStyle(
+                    color: Color(0xFFD97706),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                CountdownTimerWidget(
+                  expiresAt: item.holdExpiresAt,
+                  onExpired: () => _loadItems(),
+                  style: const TextStyle(
+                    color: Color(0xFFD97706),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const Text(
+                  ')',
+                  style: TextStyle(
+                    color: Color(0xFFD97706),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildWaitlistSection(item),
+        ],
+      );
+    } else if (isSoldToMe) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFD1FAE5),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Icon(Icons.check_circle, color: Color(0xFF10B981)),
+            SizedBox(width: 8),
+            Text(
+              'YOU BOUGHT THIS ITEM! 🎉',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF065F46),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Center(
+          child: Text(
+            'SOLD to ${item.soldTo ?? "buyer"}',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   Widget _buildWaitlistSection(Item item) {

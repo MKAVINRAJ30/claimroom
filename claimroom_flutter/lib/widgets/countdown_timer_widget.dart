@@ -1,16 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+/// Countdown timer that renders a circular progress ring around the seconds remaining.
+/// The ring and text turn urgent red when fewer than 10 seconds remain.
 class CountdownTimerWidget extends StatefulWidget {
   final DateTime? expiresAt;
   final VoidCallback? onExpired;
   final TextStyle? style;
+  final double size;
 
   const CountdownTimerWidget({
     super.key,
     required this.expiresAt,
     this.onExpired,
     this.style,
+    this.size = 48.0,
   });
 
   @override
@@ -66,24 +70,44 @@ class _CountdownTimerWidgetState extends State<CountdownTimerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final minutes = _secondsLeft ~/ 60;
-    final seconds = _secondsLeft % 60;
-    final formatted = '$minutes:${seconds.toString().padLeft(2, '0')}';
-
+    final progress = (_secondsLeft / 60.0).clamp(0.0, 1.0);
     final isUrgent = _secondsLeft < 10;
-    final defaultColor = isUrgent
+    final ringColor = isUrgent
         ? const Color(0xFFDC2626)
         : const Color(0xFFD97706);
+    final trackColor = isUrgent
+        ? const Color(0xFFFEE2E2)
+        : const Color(0xFFFEF3C7);
 
-    return Text(
-      formatted,
-      style:
-          widget.style ??
-          TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: defaultColor,
+    // Ensure minimum font size of 16px as mandated by accessibility and craft standards
+    final customFontSize = widget.style?.fontSize;
+    final effectiveFontSize = (customFontSize != null && customFontSize >= 16.0)
+        ? customFontSize
+        : 16.0;
+
+    return SizedBox(
+      width: widget.size,
+      height: widget.size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CircularProgressIndicator(
+            value: progress,
+            strokeWidth: 3.5,
+            valueColor: AlwaysStoppedAnimation<Color>(ringColor),
+            backgroundColor: trackColor,
+            strokeCap: StrokeCap.round,
           ),
+          Text(
+            '$_secondsLeft',
+            style: (widget.style ?? const TextStyle()).copyWith(
+              fontSize: effectiveFontSize,
+              fontWeight: FontWeight.bold,
+              color: ringColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

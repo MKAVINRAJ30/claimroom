@@ -8,6 +8,8 @@ import '../utils/error_helper.dart';
 import '../utils/storage_helper.dart';
 import '../widgets/countdown_timer_widget.dart';
 import 'order_sheet_screen.dart';
+import '../theme/app_theme.dart';
+import '../utils/url_helper.dart';
 
 class SellerRoomScreen extends StatefulWidget {
   final Room room;
@@ -527,6 +529,17 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
     );
   }
 
+  void _shareOnWhatsApp() {
+    final origin = Uri.base.origin.isNotEmpty && Uri.base.origin != 'null'
+        ? Uri.base.origin
+        : 'https://claimroom.app';
+    final joinLink = '$origin/?code=${_room.code}';
+    final message =
+        '⚡ Join my live claim sale on ClaimRoom!\nRoom: ${_room.title}\nCode: ${_room.code}\nLink: $joinLink';
+    final url = 'https://wa.me/?text=${Uri.encodeComponent(message)}';
+    openExternalUrl(url);
+  }
+
   void _showQrDialog() {
     final origin = Uri.base.origin.isNotEmpty && Uri.base.origin != 'null'
         ? Uri.base.origin
@@ -858,6 +871,7 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                             ),
                                             label: const Text('Show QR'),
                                             style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(0, 44),
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 12,
@@ -874,11 +888,42 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
                                           ),
                                           OutlinedButton.icon(
                                             icon: const Icon(
+                                              Icons.chat,
+                                              size: 16,
+                                              color: AppColors.whatsApp,
+                                            ),
+                                            label: const Text(
+                                              'Share on WhatsApp',
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor:
+                                                  AppColors.whatsApp,
+                                              side: const BorderSide(
+                                                color: AppColors.whatsApp,
+                                              ),
+                                              minimumSize: const Size(0, 44),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(
+                                                      8,
+                                                    ),
+                                              ),
+                                            ),
+                                            onPressed: _shareOnWhatsApp,
+                                          ),
+                                          OutlinedButton.icon(
+                                            icon: const Icon(
                                               Icons.link,
                                               size: 16,
                                             ),
                                             label: const Text('Copy Join Link'),
                                             style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(0, 44),
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 12,
@@ -1161,21 +1206,18 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
   }
 
   Widget _buildSellerItemCard(Item item, ThemeData theme) {
-    Color badgeColor;
-    String badgeText;
-    Widget trailingWidget;
+    final totalPrice = item.price * item.quantity;
+    final isHeld = item.status == 'held';
+    final isSold = item.status == 'sold';
 
+    Widget trailingWidget;
     if (item.status == 'available') {
-      badgeColor = const Color(0xFF10B981);
-      badgeText = 'AVAILABLE';
       trailingWidget = IconButton(
         icon: const Icon(Icons.delete_outline, color: Colors.red),
         onPressed: () => _deleteItem(item),
         tooltip: 'Delete Product',
       );
-    } else if (item.status == 'held') {
-      badgeColor = const Color(0xFFF59E0B);
-      badgeText = 'HELD BY ${item.heldBy?.toUpperCase() ?? "BUYER"}';
+    } else if (isHeld) {
       trailingWidget = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1198,8 +1240,6 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
         ],
       );
     } else {
-      badgeColor = const Color(0xFF8B5CF6);
-      badgeText = 'SOLD TO ${item.soldTo?.toUpperCase() ?? "BUYER"}';
       trailingWidget = Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1225,136 +1265,112 @@ class _SellerRoomScreenState extends State<SellerRoomScreen> {
       );
     }
 
-    final totalPrice = item.price * item.quantity;
-    final qtySuffix = item.quantity > 1 ? ' (x${item.quantity})' : '';
-
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            if (item.imageUrl != null && item.imageUrl!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  item.imageUrl!,
-                  width: 48,
-                  height: 48,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: badgeColor.withAlpha(30),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.image_not_supported,
-                      color: badgeColor,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              )
-            else
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: badgeColor.withAlpha(30),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  item.status == 'sold'
-                      ? Icons.shopping_bag
-                      : (item.status == 'held' ? Icons.lock_clock : Icons.sell),
-                  color: badgeColor,
-                ),
-              ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${item.name}$qtySuffix',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        '₹${totalPrice.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF10B981),
-                          fontSize: 15,
-                        ),
-                      ),
-                      if (item.quantity > 1) ...[
-                        const SizedBox(width: 4),
-                        Text(
-                          '(₹${item.price.toStringAsFixed(0)}/ea)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: badgeColor.withAlpha(25),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          badgeText,
-                          style: TextStyle(
-                            color: badgeColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                      if (item.waitlistCount != null &&
-                          item.waitlistCount! > 0) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.blue.shade200),
-                          ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 250),
+        child: Padding(
+          key: ValueKey(
+            '${item.id}_${item.status}_${item.paid}_${item.heldBy}_${item.soldTo}',
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              ItemImageTile(imageUrl: item.imageUrl, size: 54),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(
                           child: Text(
-                            '${item.waitlistCount} waiting',
-                            style: TextStyle(
-                              color: Colors.blue.shade800,
+                            item.name,
+                            style: const TextStyle(
                               fontWeight: FontWeight.bold,
-                              fontSize: 11,
+                              fontSize: 16,
                             ),
                           ),
                         ),
+                        const SizedBox(width: 6),
+                        ItemStatusChip(status: item.status),
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          '₹${totalPrice.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF10B981),
+                            fontSize: 18,
+                          ),
+                        ),
+                        ItemQuantityChip(quantity: item.quantity),
+                        if (item.quantity > 1)
+                          Text(
+                            '(₹${item.price.toStringAsFixed(0)}/ea)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        if (isHeld && item.heldBy != null)
+                          Text(
+                            '• ${item.heldBy}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFFB45309),
+                            ),
+                          ),
+                        if (isSold && item.soldTo != null)
+                          Text(
+                            '• ${item.soldTo}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        if (item.waitlistCount != null &&
+                            item.waitlistCount! > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.blue.shade200),
+                            ),
+                            child: Text(
+                              '${item.waitlistCount} waiting',
+                              style: TextStyle(
+                                color: Colors.blue.shade800,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-            trailingWidget,
-          ],
+              const SizedBox(width: 8),
+              trailingWidget,
+            ],
+          ),
         ),
       ),
     );

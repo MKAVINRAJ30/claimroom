@@ -32,7 +32,7 @@ Small independent sellers in India and worldwide sell through **Instagram Lives*
 2. **Buyers** join live, watch products update instantly, and tap **CLAIM NOW**.
 3. **Atomic Double-Claim Prevention**: Serverpod handles each claim inside a PostgreSQL database transaction with `LockMode.forUpdate`. Claims run inside a database transaction with a row lock, so only one buyer can win an item. Even if multiple buyers tap at the exact same millisecond, row-level database locking guarantees exactly one claim succeeds.
 4. **Two-Layer Hold Timer & Auto-Release**: Winning claims get a **60-second hold**. Hold expiry has two layers: a Serverpod **Future Call** when enabled, plus a server-side sweep on reads (`listItems`, `getOrderSheet`, `claimItem`), so it also works where future calls are disabled (e.g. Serverpod Cloud Starter). Expired holds can also be immediately claimed by any buyer.
-5. **Waitlist with Auto-Handover**: When an item is held or sold by another buyer, any attendee can tap **Join waitlist** (up to 10 entries per item). If a hold ends without a sale (expired, buyer released, or seller released), the earliest waitlisted buyer automatically becomes the new holder with a fresh 60-second hold and push notification banner ("🎉 It's your turn!"). Buyers with 3 active holds are skipped and kept in queue.
+5. **Waitlist with Auto-Handover**: When an item is held by another buyer, any attendee can tap **Join waitlist** (only held items can be waitlisted; up to 10 entries per item). If a hold ends without a sale (expired, buyer released, or seller released), the earliest waitlisted buyer automatically becomes the new holder with a fresh 60-second hold and in-app banner ("🎉 It's your turn!"). Buyers with 3 active holds are skipped and kept in queue.
 6. **Real-Time Streaming**: Serverpod streaming endpoints push live events (`item_claimed`, `item_confirmed`, `item_released`, `item_paid`, `waitlist_updated`, `sale_ended`) to all attendees simultaneously.
 7. **Mark as Paid & Ghost Buyer Resolution**: Sellers can toggle paid status per item directly in the live order sheet, tracking paid vs unpaid totals in real time.
 8. **Order Sheet & Multi-Format Export**: When the sale ends, the seller gets an aggregated order sheet grouped by buyer with 1-tap **Copy WhatsApp Summary** and **Copy as CSV** buttons.
@@ -198,6 +198,14 @@ In accordance with hackathon guidelines, scope was kept focused on the core live
 - **Payments & Authenticity**: Payments and item authenticity are out of scope and not verified by ClaimRoom.
 - **Claim Limit Concurrency**: The 3-hold limit per buyer token is checked within the item-level row-lock transaction.
 - **Future Calls on Starter**: Serverpod Cloud Starter has future calls disabled, so hold expiry relies on the read-sweep layer in the live deployment.
+
+---
+
+## 🗺️ Roadmap
+
+- **Ghost-Buyer Rescue**: Automated reminder pings and dynamic hold shortening for repeat abandoners to maximize sell-through.
+- **Direct Payment Links**: Integrated UPI deep links and Stripe/Razorpay payment requests to convert claims to paid orders instantly.
+- **Push & WhatsApp Notifications**: Web push alerts and WhatsApp bot notifications for buyers when their waitlisted item opens up or the seller starts a drop.
 
 ---
 

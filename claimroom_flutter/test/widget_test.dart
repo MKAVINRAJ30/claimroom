@@ -16,13 +16,13 @@ void main() {
 
     // Verify tabs are present
     expect(find.text("I'm a Seller"), findsOneWidget);
-    expect(find.text("I'm a Buyer"), findsOneWidget);
+    expect(find.text("Join a Sale"), findsOneWidget);
 
     // Verify Quick Start Instant Demo button is removed
     expect(find.text('⚡ Quick Start Instant Demo'), findsNothing);
 
     // Tap on Buyer tab
-    await tester.tap(find.text("I'm a Buyer"));
+    await tester.tap(find.text("Join a Sale"));
     await tester.pumpAndSettle();
 
     // Verify buyer name hint text is 'Enter your name' and starts empty
