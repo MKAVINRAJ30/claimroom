@@ -8,12 +8,14 @@ class OrderSheetScreen extends StatefulWidget {
   final int roomId;
   final String roomTitle;
   final String sellerKey;
+  final OrderSheet? initialOrderSheet;
 
   const OrderSheetScreen({
     super.key,
     required this.roomId,
     required this.roomTitle,
     required this.sellerKey,
+    this.initialOrderSheet,
   });
 
   @override
@@ -28,7 +30,12 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
   @override
   void initState() {
     super.initState();
-    _loadOrderSheet();
+    if (widget.initialOrderSheet != null) {
+      _orderSheet = widget.initialOrderSheet;
+      _isLoading = false;
+    } else {
+      _loadOrderSheet();
+    }
   }
 
   Future<void> _loadOrderSheet() async {
@@ -103,8 +110,12 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
     final buffer = StringBuffer();
     buffer.writeln('🎉 *Order Summary: ${sheet.roomTitle}*');
     buffer.writeln('Seller: ${sheet.sellerName}');
+    final soldItemRows = sheet.buyers.fold<int>(
+      0,
+      (sum, b) => sum + b.items.length,
+    );
     buffer.writeln(
-      'Items Sold: ${sheet.totalItemsSold} of ${sheet.totalItems}',
+      'Items Sold: $soldItemRows of ${sheet.totalItems} (${sheet.totalItemsSold} units)',
     );
     buffer.writeln('Grand Total: ₹${sheet.grandTotal.toStringAsFixed(0)}');
     final paidVal = sheet.totalPaid;
@@ -245,6 +256,11 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
       }
     }
 
+    final soldItemRows = sheet.buyers.fold<int>(
+      0,
+      (sum, b) => sum + b.items.length,
+    );
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Center(
@@ -323,8 +339,8 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
                         alignment: WrapAlignment.spaceAround,
                         children: [
                           _statTile(
-                            'Items Sold',
-                            '${sheet.totalItemsSold} of ${sheet.totalItems}',
+                            '${sheet.totalItemsSold} units',
+                            'Items Sold: $soldItemRows of ${sheet.totalItems}',
                             isDark: isDark,
                           ),
                           _statTile(
@@ -405,8 +421,11 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
               ),
 
               const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
                 children: [
                   Text(
                     'Buyers & Claimed Items',
@@ -458,7 +477,7 @@ class _OrderSheetScreenState extends State<OrderSheetScreen> {
         Text(
           value,
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: color ?? (isDark ? Colors.white : Colors.black87),
           ),
